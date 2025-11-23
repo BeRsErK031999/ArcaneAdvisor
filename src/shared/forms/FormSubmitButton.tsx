@@ -5,16 +5,19 @@ interface FormSubmitButtonProps {
   title: string;
   isSubmitting?: boolean;
   style?: ViewStyle;
+  onPress?: () => void;
 }
 
 export const FormSubmitButton: React.FC<FormSubmitButtonProps> = ({
   title,
   isSubmitting,
   style,
+  onPress,
 }) => {
   return (
     <TouchableOpacity
       disabled={isSubmitting}
+      onPress={onPress}
       style={[
         {
           paddingVertical: 12,
