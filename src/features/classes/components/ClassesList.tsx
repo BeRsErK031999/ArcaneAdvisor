@@ -6,12 +6,13 @@ import {
   Text,
   TouchableOpacity,
 } from 'react-native';
-import { Link } from 'expo-router';
+import { Link, useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { getClasses } from '@/features/classes/api/getClasses';
 import type { Class } from '@/features/classes/api/types';
 
 export const ClassesList: React.FC = () => {
+  const router = useRouter();
   const {
     data: classes,
     isLoading,
@@ -50,8 +51,22 @@ export const ClassesList: React.FC = () => {
 
   if (!classes || classes.length === 0) {
     return (
-      <SafeAreaView style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 16 }}>
-        <Text>Классов пока нет.</Text>
+      <SafeAreaView style={{ flex: 1, padding: 16 }}>
+        <TouchableOpacity
+          onPress={() => router.push('/(tabs)/library/classes/create')}
+          style={{
+            marginBottom: 16,
+            paddingVertical: 10,
+            paddingHorizontal: 16,
+            borderRadius: 8,
+            alignItems: 'center',
+            backgroundColor: '#28a745',
+          }}
+        >
+          <Text style={{ color: '#fff', fontWeight: '600' }}>+ Создать класс</Text>
+        </TouchableOpacity>
+
+        <Text style={{ textAlign: 'center' }}>Классов пока нет.</Text>
       </SafeAreaView>
     );
   }
@@ -95,6 +110,20 @@ export const ClassesList: React.FC = () => {
 
   return (
     <SafeAreaView style={{ flex: 1 }}>
+      <TouchableOpacity
+        onPress={() => router.push('/(tabs)/library/classes/create')}
+        style={{
+          margin: 16,
+          paddingVertical: 10,
+          paddingHorizontal: 16,
+          borderRadius: 8,
+          alignItems: 'center',
+          backgroundColor: '#28a745',
+        }}
+      >
+        <Text style={{ color: '#fff', fontWeight: '600' }}>+ Создать класс</Text>
+      </TouchableOpacity>
+
       <FlatList
         data={classes}
         keyExtractor={(item) => item.class_id}
