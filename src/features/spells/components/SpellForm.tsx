@@ -13,21 +13,31 @@ interface SpellFormProps {
   onSuccess?: () => void;
 }
 
-const defaultValues: SpellCreateInput = SpellCreateSchema.parse({
+const defaultValues: SpellCreateInput = {
   name: '',
   description: '',
   next_level_description: '',
   level: 1,
   school: '',
+  concentration: false,
+  ritual: false,
+  class_ids: [],
+  subclass_ids: [],
+  saving_throws: [],
+  damage_type: { name: null },
+  duration: { game_time: null },
   casting_time: { count: 1, unit: 'action' },
   spell_range: { count: 60, unit: 'ft' },
+  splash: { splash: null },
   components: {
     verbal: false,
     symbolic: false,
     material: false,
     materials: [],
   },
-});
+  name_in_english: '',
+  source_id: '',
+};
 
 export const SpellForm: React.FC<SpellFormProps> = ({ onSuccess }) => {
   const queryClient = useQueryClient();
