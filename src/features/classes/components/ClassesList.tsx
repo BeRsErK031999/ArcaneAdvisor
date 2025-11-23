@@ -4,8 +4,9 @@ import {
   FlatList,
   SafeAreaView,
   Text,
-  View,
+  TouchableOpacity,
 } from 'react-native';
+import { Link } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { getClasses } from '@/features/classes/api/getClasses';
 import type { Class } from '@/features/classes/api/types';
@@ -60,30 +61,35 @@ export const ClassesList: React.FC = () => {
     const savingThrows = item.proficiencies.saving_throws.join(', ');
 
     return (
-      <View
-        style={{
-          paddingVertical: 8,
-          paddingHorizontal: 16,
-          borderBottomWidth: 1,
-          borderBottomColor: '#ddd',
-        }}
+      <Link
+        href={{ pathname: '/(tabs)/library/classes/[classId]', params: { classId: item.class_id } }}
+        asChild
       >
-        <Text style={{ fontWeight: 'bold', fontSize: 16 }}>
-          {item.name}
-          {primaryMods && ` (${primaryMods})`}
-        </Text>
-
-        <Text style={{ marginTop: 4, fontSize: 12, color: '#555' }}>
-          Спасброски: {savingThrows || '—'}
-        </Text>
-
-        <Text
-          numberOfLines={3}
-          style={{ marginTop: 4, fontSize: 13, color: '#333' }}
+        <TouchableOpacity
+          style={{
+            paddingVertical: 8,
+            paddingHorizontal: 16,
+            borderBottomWidth: 1,
+            borderBottomColor: '#ddd',
+          }}
         >
-          {item.description}
-        </Text>
-      </View>
+          <Text style={{ fontWeight: 'bold', fontSize: 16 }}>
+            {item.name}
+            {primaryMods && ` (${primaryMods})`}
+          </Text>
+
+          <Text style={{ marginTop: 4, fontSize: 12, color: '#555' }}>
+            Спасброски: {savingThrows || '—'}
+          </Text>
+
+          <Text
+            numberOfLines={3}
+            style={{ marginTop: 4, fontSize: 13, color: '#333' }}
+          >
+            {item.description}
+          </Text>
+        </TouchableOpacity>
+      </Link>
     );
   };
 
