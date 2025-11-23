@@ -1,12 +1,13 @@
 import React from 'react';
 import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { Link } from 'expo-router';
+import { Link, useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 
 import { getSpells } from '@/features/spells/api/getSpells';
 import { Spell } from '@/features/spells/api/types';
 
 export function SpellsList() {
+  const router = useRouter();
   const { data, isLoading, isError, error, refetch, isRefetching } = useQuery({
     queryKey: ['spells'],
     queryFn: getSpells,
@@ -36,6 +37,18 @@ export function SpellsList() {
   if (!data || data.length === 0) {
     return (
       <View style={styles.centered}>
+        <TouchableOpacity
+          onPress={() => router.push('/(tabs)/library/spells/create')}
+          style={{
+            margin: 16,
+            paddingVertical: 10,
+            paddingHorizontal: 16,
+            borderRadius: 8,
+            backgroundColor: '#28a745',
+          }}
+        >
+          <Text style={{ color: '#fff', fontWeight: '600' }}>+ Создать заклинание</Text>
+        </TouchableOpacity>
         <Text style={styles.helperText}>Заклинаний пока нет</Text>
       </View>
     );
@@ -63,14 +76,28 @@ export function SpellsList() {
   );
 
   return (
-    <FlatList
-      data={data}
-      keyExtractor={(item) => item.spell_id}
-      renderItem={renderItem}
-      refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} />}
-      contentContainerStyle={styles.listContainer}
-      ItemSeparatorComponent={() => <View style={styles.separator} />}
-    />
+    <View>
+      <TouchableOpacity
+        onPress={() => router.push('/(tabs)/library/spells/create')}
+        style={{
+          margin: 16,
+          paddingVertical: 10,
+          paddingHorizontal: 16,
+          borderRadius: 8,
+          backgroundColor: '#28a745',
+        }}
+      >
+        <Text style={{ color: '#fff', fontWeight: '600' }}>+ Создать заклинание</Text>
+      </TouchableOpacity>
+      <FlatList
+        data={data}
+        keyExtractor={(item) => item.spell_id}
+        renderItem={renderItem}
+        refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} />}
+        contentContainerStyle={styles.listContainer}
+        ItemSeparatorComponent={() => <View style={styles.separator} />}
+      />
+    </View>
   );
 }
 

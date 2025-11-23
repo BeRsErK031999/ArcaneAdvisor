@@ -2,6 +2,7 @@ import React from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Switch, Text, TextInput, View } from 'react-native';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { SpellCreateSchema, type SpellCreateInput } from '@/features/spells/api/types';
 import { createSpell } from '@/features/spells/api/createSpell';
 import { FormErrorText } from '@/shared/forms/FormErrorText';
@@ -29,6 +30,7 @@ const defaultValues: SpellCreateInput = SpellCreateSchema.parse({
 });
 
 export const SpellForm: React.FC<SpellFormProps> = ({ onSuccess }) => {
+  const queryClient = useQueryClient();
   const {
     control,
     handleSubmit,
@@ -39,17 +41,35 @@ export const SpellForm: React.FC<SpellFormProps> = ({ onSuccess }) => {
     defaultValues,
   });
 
+  const [submitError, setSubmitError] = React.useState<string | null>(null);
+
+  const { mutateAsync } = useMutation({
+    mutationFn: createSpell,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['spells'] });
+    },
+  });
+
   const onSubmit = async (values: SpellCreateInput) => {
-    await createSpell(values);
-    if (onSuccess) {
-      onSuccess();
-    } else {
-      reset(defaultValues);
+    setSubmitError(null);
+    try {
+      await mutateAsync(values);
+      if (onSuccess) {
+        onSuccess();
+      } else {
+        reset(defaultValues);
+      }
+    } catch (error) {
+      console.error('Create spell error:', error);
+      setSubmitError('Не удалось сохранить заклинание. Попробуйте ещё раз.');
     }
   };
 
   return (
     <FormScreenLayout title="Создать заклинание">
+      {submitError ? (
+        <Text style={{ color: 'red' }}>{submitError}</Text>
+      ) : null}
       <View style={{ gap: 4 }}>
         <Text>Название</Text>
         <Controller
