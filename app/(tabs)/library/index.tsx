@@ -1,8 +1,15 @@
 import React from 'react';
-import { Link } from 'expo-router';
+import { Link, type Href } from 'expo-router';
 import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
 
-const sections = [
+type Section = {
+  label: string;
+  href: Href;
+  group?: string;
+  description?: string;
+};
+
+const sections: Section[] = [
   { label: 'Заклинания', href: '/(tabs)/library/spells' },
   { label: 'Классы', href: '/(tabs)/library/classes' },
   { label: 'Подклассы', href: '/(tabs)/library/subclasses' },
@@ -33,7 +40,7 @@ export default function LibraryMenuScreen() {
         Справочник ArcaneAdvisor
       </Text>
       {sections.map((section) => (
-        <View key={section.href} style={{ gap: 4 }}>
+        <View key={section.label} style={{ gap: 4 }}>
           {section.group ? (
             <Text style={{ fontSize: 16, fontWeight: '600' }}>{section.group}</Text>
           ) : null}

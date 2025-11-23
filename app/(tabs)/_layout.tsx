@@ -11,13 +11,14 @@ export default function TabsLayout() {
 
   return (
     <Tabs
+      initialRouteName="library/index"
       screenOptions={{
         tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
         headerShown: false,
         tabBarButton: HapticTab,
       }}>
       <Tabs.Screen
-        name="library"
+        name="library/index"
         options={{
           title: 'Справочник',
           tabBarIcon: ({ color, size }) => (
@@ -26,7 +27,7 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
-        name="characters"
+        name="characters/index"
         options={{
           title: 'Персонажи',
           tabBarIcon: ({ color, size }) => (
@@ -35,7 +36,7 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
-        name="rooms"
+        name="rooms/index"
         options={{
           title: 'Комнаты',
           tabBarIcon: ({ color, size }) => (
@@ -44,7 +45,7 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
-        name="settings"
+        name="settings/index"
         options={{
           title: 'Настройки',
           tabBarIcon: ({ color, size }) => (
