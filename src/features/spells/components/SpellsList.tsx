@@ -1,5 +1,6 @@
 import React from 'react';
-import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Link } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 
 import { getSpells } from '@/features/spells/api/getSpells';
@@ -41,16 +42,24 @@ export function SpellsList() {
   }
 
   const renderItem = ({ item }: { item: Spell }) => (
-    <View style={styles.card}>
-      <View style={styles.cardHeader}>
-        <Text style={styles.name}>{item.name}</Text>
-        <Text style={styles.level}>Уровень: {item.level}</Text>
-      </View>
-      <Text style={styles.school}>Школа: {item.school}</Text>
-      <Text style={styles.description} numberOfLines={2}>
-        {item.description}
-      </Text>
-    </View>
+    <Link
+      href={{
+        pathname: '/(tabs)/library/spells/[spellId]',
+        params: { spellId: item.spell_id },
+      }}
+      asChild
+    >
+      <TouchableOpacity style={styles.card}>
+        <View style={styles.cardHeader}>
+          <Text style={styles.name}>{item.name}</Text>
+          <Text style={styles.level}>Уровень: {item.level}</Text>
+        </View>
+        <Text style={styles.school}>Школа: {item.school}</Text>
+        <Text style={styles.description} numberOfLines={2}>
+          {item.description}
+        </Text>
+      </TouchableOpacity>
+    </Link>
   );
 
   return (
