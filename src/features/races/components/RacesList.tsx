@@ -7,11 +7,12 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
-import { Link } from 'expo-router';
+import { Link, useRouter } from 'expo-router';
 import { getRaces } from '@/features/races/api/getRaces';
 import type { Race } from '@/features/races/api/types';
 
 export const RacesList: React.FC = () => {
+  const router = useRouter();
   const {
     data: races,
     isLoading,
@@ -22,6 +23,22 @@ export const RacesList: React.FC = () => {
     queryKey: ['races'],
     queryFn: getRaces,
   });
+
+  const renderCreateButton = () => (
+    <TouchableOpacity
+      onPress={() => router.push('/(tabs)/library/races/create')}
+      style={{
+        margin: 16,
+        paddingVertical: 10,
+        paddingHorizontal: 16,
+        borderRadius: 8,
+        alignItems: 'center',
+        backgroundColor: '#28a745',
+      }}
+    >
+      <Text style={{ color: '#fff', fontWeight: '600' }}>+ Создать расу</Text>
+    </TouchableOpacity>
+  );
 
   if (isLoading) {
     return (
@@ -49,7 +66,8 @@ export const RacesList: React.FC = () => {
 
   if (!races || races.length === 0) {
     return (
-      <SafeAreaView style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 16 }}>
+      <SafeAreaView style={{ flex: 1, padding: 16 }}>
+        {renderCreateButton()}
         <Text>Рас пока нет.</Text>
       </SafeAreaView>
     );
@@ -90,6 +108,7 @@ export const RacesList: React.FC = () => {
 
   return (
     <SafeAreaView style={{ flex: 1 }}>
+      {renderCreateButton()}
       <FlatList
         data={races}
         keyExtractor={(item) => item.race_id}
