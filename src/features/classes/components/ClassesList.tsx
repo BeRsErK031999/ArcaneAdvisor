@@ -1,15 +1,11 @@
 import React from 'react';
-import {
-  ActivityIndicator,
-  FlatList,
-  SafeAreaView,
-  Text,
-  TouchableOpacity,
-} from 'react-native';
+import { ActivityIndicator, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Link, useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { getClasses } from '@/features/classes/api/getClasses';
 import type { Class } from '@/features/classes/api/types';
+import { ScreenContainer } from '@/shared/ui/ScreenContainer';
+import { colors } from '@/shared/theme/colors';
 
 export const ClassesList: React.FC = () => {
   const router = useRouter();
@@ -26,48 +22,38 @@ export const ClassesList: React.FC = () => {
 
   if (isLoading) {
     return (
-      <SafeAreaView style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" />
-        <Text style={{ marginTop: 8 }}>Загружаю классы...</Text>
-      </SafeAreaView>
+      <ScreenContainer style={styles.centered}>
+        <ActivityIndicator size="large" color={colors.textSecondary} />
+        <Text style={styles.helperText}>Загружаю классы...</Text>
+      </ScreenContainer>
     );
   }
 
   if (isError) {
     console.error('Error loading classes:', error);
     return (
-      <SafeAreaView style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 16 }}>
-        <Text style={{ marginBottom: 8 }}>Ошибка при загрузке классов.</Text>
-        <Text style={{ marginBottom: 8 }}>Проверь адрес backend и CORS.</Text>
-        <Text
-          onPress={() => refetch()}
-          style={{ color: 'blue', textDecorationLine: 'underline' }}
-        >
+      <ScreenContainer style={styles.centered}>
+        <Text style={styles.errorText}>Ошибка при загрузке классов.</Text>
+        <Text style={styles.helperText}>Проверь адрес backend и CORS.</Text>
+        <Text onPress={() => refetch()} style={styles.linkText}>
           Повторить запрос
         </Text>
-      </SafeAreaView>
+      </ScreenContainer>
     );
   }
 
   if (!classes || classes.length === 0) {
     return (
-      <SafeAreaView style={{ flex: 1, padding: 16 }}>
+      <ScreenContainer>
         <TouchableOpacity
           onPress={() => router.push('/(tabs)/library/classes/create')}
-          style={{
-            marginBottom: 16,
-            paddingVertical: 10,
-            paddingHorizontal: 16,
-            borderRadius: 8,
-            alignItems: 'center',
-            backgroundColor: '#28a745',
-          }}
+          style={[styles.createButton, { marginBottom: 16 }]}
         >
-          <Text style={{ color: '#fff', fontWeight: '600' }}>+ Создать класс</Text>
+          <Text style={styles.createButtonText}>+ Создать класс</Text>
         </TouchableOpacity>
 
-        <Text style={{ textAlign: 'center' }}>Классов пока нет.</Text>
-      </SafeAreaView>
+        <Text style={styles.helperText}>Классов пока нет.</Text>
+      </ScreenContainer>
     );
   }
 
@@ -80,27 +66,15 @@ export const ClassesList: React.FC = () => {
         href={{ pathname: '/(tabs)/library/classes/[classId]', params: { classId: item.class_id } }}
         asChild
       >
-        <TouchableOpacity
-          style={{
-            paddingVertical: 8,
-            paddingHorizontal: 16,
-            borderBottomWidth: 1,
-            borderBottomColor: '#ddd',
-          }}
-        >
-          <Text style={{ fontWeight: 'bold', fontSize: 16 }}>
+        <TouchableOpacity style={styles.card}>
+          <Text style={styles.name}>
             {item.name}
             {primaryMods && ` (${primaryMods})`}
           </Text>
 
-          <Text style={{ marginTop: 4, fontSize: 12, color: '#555' }}>
-            Спасброски: {savingThrows || '—'}
-          </Text>
+          <Text style={styles.metaText}>Спасброски: {savingThrows || '—'}</Text>
 
-          <Text
-            numberOfLines={3}
-            style={{ marginTop: 4, fontSize: 13, color: '#333' }}
-          >
+          <Text numberOfLines={3} style={styles.description}>
             {item.description}
           </Text>
         </TouchableOpacity>
@@ -109,26 +83,83 @@ export const ClassesList: React.FC = () => {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1 }}>
+    <ScreenContainer>
       <TouchableOpacity
         onPress={() => router.push('/(tabs)/library/classes/create')}
-        style={{
-          margin: 16,
-          paddingVertical: 10,
-          paddingHorizontal: 16,
-          borderRadius: 8,
-          alignItems: 'center',
-          backgroundColor: '#28a745',
-        }}
+        style={styles.createButton}
       >
-        <Text style={{ color: '#fff', fontWeight: '600' }}>+ Создать класс</Text>
+        <Text style={styles.createButtonText}>+ Создать класс</Text>
       </TouchableOpacity>
 
       <FlatList
         data={classes}
         keyExtractor={(item) => item.class_id}
         renderItem={renderItem}
+        ItemSeparatorComponent={() => <View style={styles.separator} />}
       />
-    </SafeAreaView>
+    </ScreenContainer>
   );
 };
+
+const styles = StyleSheet.create({
+  centered: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    rowGap: 8,
+  },
+  helperText: {
+    color: colors.textSecondary,
+    fontSize: 16,
+    textAlign: 'center',
+  },
+  errorText: {
+    color: colors.error,
+    fontSize: 16,
+    textAlign: 'center',
+  },
+  linkText: {
+    color: colors.buttonPrimary,
+    textDecorationLine: 'underline',
+    fontSize: 16,
+  },
+  createButton: {
+    margin: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    backgroundColor: colors.buttonPrimary,
+    borderWidth: 1,
+    borderColor: colors.buttonPrimaryHover,
+  },
+  createButtonText: {
+    color: colors.buttonPrimaryText,
+    fontWeight: '600',
+  },
+  card: {
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  name: {
+    fontWeight: 'bold',
+    fontSize: 16,
+    color: colors.textPrimary,
+  },
+  metaText: {
+    marginTop: 4,
+    fontSize: 12,
+    color: colors.textSecondary,
+  },
+  description: {
+    marginTop: 4,
+    fontSize: 13,
+    color: colors.textMuted,
+  },
+  separator: {
+    height: 12,
+  },
+});
