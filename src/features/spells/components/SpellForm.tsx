@@ -5,12 +5,19 @@ import { Switch, Text, TextInput, View } from 'react-native';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { SpellCreateSchema, type SpellCreateInput } from '@/features/spells/api/types';
 import { createSpell } from '@/features/spells/api/createSpell';
+import { updateSpell } from '@/features/spells/api/updateSpell';
 import { FormErrorText } from '@/shared/forms/FormErrorText';
 import { FormScreenLayout } from '@/shared/forms/FormScreenLayout';
 import { FormSubmitButton } from '@/shared/forms/FormSubmitButton';
 
+type SpellFormMode = 'create' | 'edit';
+
 interface SpellFormProps {
+  mode?: SpellFormMode;
+  spellId?: string;
+  initialValues?: SpellCreateInput;
   onSuccess?: () => void;
+  submitLabel?: string;
 }
 
 const defaultValues: SpellCreateInput = {
@@ -39,44 +46,94 @@ const defaultValues: SpellCreateInput = {
   source_id: '',
 };
 
-export const SpellForm: React.FC<SpellFormProps> = ({ onSuccess }) => {
+export const SpellForm: React.FC<SpellFormProps> = ({
+  mode = 'create',
+  spellId,
+  initialValues,
+  onSuccess,
+  submitLabel,
+}) => {
+  if (mode === 'edit' && !spellId) {
+    console.warn('SpellForm: spellId is required in edit mode');
+  }
+
   const queryClient = useQueryClient();
+  const formDefaultValues = initialValues ?? defaultValues;
   const {
     control,
     handleSubmit,
-    formState: { errors, isSubmitting },
+    formState: { errors },
     reset,
   } = useForm<SpellCreateInput>({
     resolver: zodResolver(SpellCreateSchema),
-    defaultValues,
+    defaultValues: formDefaultValues,
   });
 
   const [submitError, setSubmitError] = React.useState<string | null>(null);
 
-  const { mutateAsync } = useMutation({
+  React.useEffect(() => {
+    if (initialValues) {
+      reset(initialValues);
+    }
+  }, [initialValues, reset]);
+
+  const createMutation = useMutation({
     mutationFn: createSpell,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['spells'] });
     },
   });
 
+  const updateMutation = useMutation({
+    mutationFn: (values: SpellCreateInput) => {
+      if (!spellId) {
+        throw new Error('spellId is required for update');
+      }
+      return updateSpell(spellId, values);
+    },
+    onSuccess: (_, __) => {
+      queryClient.invalidateQueries({ queryKey: ['spells'] });
+      if (spellId) {
+        queryClient.invalidateQueries({ queryKey: ['spells', spellId] });
+      }
+    },
+  });
+
   const onSubmit = async (values: SpellCreateInput) => {
     setSubmitError(null);
     try {
-      await mutateAsync(values);
+      if (mode === 'edit') {
+        if (!spellId) {
+          console.warn('SpellForm: cannot submit edit mode without spellId');
+          setSubmitError('Не удалось сохранить изменения заклинания. Попробуйте ещё раз.');
+          return;
+        }
+        await updateMutation.mutateAsync(values);
+      } else {
+        await createMutation.mutateAsync(values);
+        reset();
+      }
+
       if (onSuccess) {
         onSuccess();
-      } else {
-        reset(defaultValues);
       }
     } catch (error) {
-      console.error('Create spell error:', error);
-      setSubmitError('Не удалось сохранить заклинание. Попробуйте ещё раз.');
+      console.error('Spell form submit error:', error);
+      setSubmitError(
+        mode === 'edit'
+          ? 'Не удалось сохранить изменения заклинания. Попробуйте ещё раз.'
+          : 'Не удалось сохранить заклинание. Попробуйте ещё раз.',
+      );
     }
   };
 
+  const isSubmitting = createMutation.isPending || updateMutation.isPending;
+  const formTitle = mode === 'edit' ? 'Редактировать заклинание' : 'Создать заклинание';
+  const finalSubmitLabel =
+    submitLabel ?? (mode === 'edit' ? 'Сохранить изменения' : 'Сохранить заклинание');
+
   return (
-    <FormScreenLayout title="Создать заклинание">
+    <FormScreenLayout title={formTitle}>
       {submitError ? (
         <Text style={{ color: 'red' }}>{submitError}</Text>
       ) : null}
@@ -329,11 +386,7 @@ export const SpellForm: React.FC<SpellFormProps> = ({ onSuccess }) => {
         </View>
       </View>
 
-      <FormSubmitButton
-        title="Сохранить заклинание"
-        isSubmitting={isSubmitting}
-        onPress={handleSubmit(onSubmit)}
-      />
+      <FormSubmitButton title={finalSubmitLabel} isSubmitting={isSubmitting} onPress={handleSubmit(onSubmit)} />
     </FormScreenLayout>
   );
 };
