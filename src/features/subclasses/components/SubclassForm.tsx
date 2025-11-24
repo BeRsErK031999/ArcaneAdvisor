@@ -1,7 +1,7 @@
 import React from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Text, TextInput, View } from 'react-native';
+import { StyleSheet, Text, TextInput, View } from 'react-native';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { createSubclass } from '@/features/subclasses/api/createSubclass';
@@ -9,6 +9,7 @@ import { SubclassCreateSchema, type SubclassCreateInput } from '@/features/subcl
 import { FormErrorText } from '@/shared/forms/FormErrorText';
 import { FormScreenLayout } from '@/shared/forms/FormScreenLayout';
 import { FormSubmitButton } from '@/shared/forms/FormSubmitButton';
+import { colors } from '@/shared/theme/colors';
 
 interface SubclassFormProps {
   onSuccess?: () => void;
@@ -59,10 +60,10 @@ export const SubclassForm: React.FC<SubclassFormProps> = ({ onSuccess }) => {
 
   return (
     <FormScreenLayout title="Создать подкласс">
-      {submitError ? <Text style={{ color: 'red' }}>{submitError}</Text> : null}
+      {submitError ? <Text style={styles.errorText}>{submitError}</Text> : null}
 
-      <View style={{ gap: 4 }}>
-        <Text>UUID класса</Text>
+      <View style={styles.field}>
+        <Text style={styles.label}>UUID класса</Text>
         <Controller
           control={control}
           name="class_id"
@@ -72,15 +73,16 @@ export const SubclassForm: React.FC<SubclassFormProps> = ({ onSuccess }) => {
               onChangeText={onChange}
               onBlur={onBlur}
               placeholder="c7b15d1c-1234-4c3e-8f9e-abcdef012345"
-              style={{ borderWidth: 1, borderColor: '#ccc', padding: 8, borderRadius: 4 }}
+              style={styles.input}
+              placeholderTextColor={colors.inputPlaceholder}
             />
           )}
         />
-        <FormErrorText message={errors.class_id?.message} />
+        <FormErrorText>{errors.class_id?.message}</FormErrorText>
       </View>
 
-      <View style={{ gap: 4 }}>
-        <Text>Название подкласса</Text>
+      <View style={styles.field}>
+        <Text style={styles.label}>Название подкласса</Text>
         <Controller
           control={control}
           name="name"
@@ -90,15 +92,16 @@ export const SubclassForm: React.FC<SubclassFormProps> = ({ onSuccess }) => {
               onChangeText={onChange}
               onBlur={onBlur}
               placeholder="Рыцарь теней"
-              style={{ borderWidth: 1, borderColor: '#ccc', padding: 8, borderRadius: 4 }}
+              style={styles.input}
+              placeholderTextColor={colors.inputPlaceholder}
             />
           )}
         />
-        <FormErrorText message={errors.name?.message} />
+        <FormErrorText>{errors.name?.message}</FormErrorText>
       </View>
 
-      <View style={{ gap: 4 }}>
-        <Text>Название на английском</Text>
+      <View style={styles.field}>
+        <Text style={styles.label}>Название на английском</Text>
         <Controller
           control={control}
           name="name_in_english"
@@ -108,15 +111,16 @@ export const SubclassForm: React.FC<SubclassFormProps> = ({ onSuccess }) => {
               onChangeText={onChange}
               onBlur={onBlur}
               placeholder="Shadow Knight"
-              style={{ borderWidth: 1, borderColor: '#ccc', padding: 8, borderRadius: 4 }}
+              style={styles.input}
+              placeholderTextColor={colors.inputPlaceholder}
             />
           )}
         />
-        <FormErrorText message={errors.name_in_english?.message} />
+        <FormErrorText>{errors.name_in_english?.message}</FormErrorText>
       </View>
 
-      <View style={{ gap: 4 }}>
-        <Text>Описание</Text>
+      <View style={styles.field}>
+        <Text style={styles.label}>Описание</Text>
         <Controller
           control={control}
           name="description"
@@ -127,18 +131,12 @@ export const SubclassForm: React.FC<SubclassFormProps> = ({ onSuccess }) => {
               onBlur={onBlur}
               placeholder="Кратко опишите особенности подкласса"
               multiline
-              style={{
-                borderWidth: 1,
-                borderColor: '#ccc',
-                padding: 8,
-                borderRadius: 4,
-                minHeight: 100,
-                textAlignVertical: 'top',
-              }}
+              style={[styles.input, styles.textArea]}
+              placeholderTextColor={colors.inputPlaceholder}
             />
           )}
         />
-        <FormErrorText message={errors.description?.message} />
+        <FormErrorText>{errors.description?.message}</FormErrorText>
       </View>
 
       <FormSubmitButton
@@ -149,3 +147,32 @@ export const SubclassForm: React.FC<SubclassFormProps> = ({ onSuccess }) => {
     </FormScreenLayout>
   );
 };
+
+const styles = StyleSheet.create({
+  errorText: {
+    color: colors.error,
+    marginBottom: 8,
+    fontWeight: '600',
+  },
+  field: {
+    gap: 4,
+  },
+  label: {
+    fontWeight: '600',
+    color: colors.textPrimary,
+    marginBottom: 4,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: colors.inputBorder,
+    backgroundColor: colors.inputBackground,
+    color: colors.textPrimary,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 6,
+  },
+  textArea: {
+    minHeight: 100,
+    textAlignVertical: 'top',
+  },
+});

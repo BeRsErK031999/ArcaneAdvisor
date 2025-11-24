@@ -1,11 +1,13 @@
 import React from 'react';
-import { ActivityIndicator, Text, TouchableOpacity, ViewStyle } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, ViewStyle } from 'react-native';
+import { colors } from '@/shared/theme/colors';
 
 interface FormSubmitButtonProps {
   title: string;
   isSubmitting?: boolean;
   style?: ViewStyle;
   onPress?: () => void;
+  disabled?: boolean;
 }
 
 export const FormSubmitButton: React.FC<FormSubmitButtonProps> = ({
@@ -13,28 +15,47 @@ export const FormSubmitButton: React.FC<FormSubmitButtonProps> = ({
   isSubmitting,
   style,
   onPress,
+  disabled,
 }) => {
+  const isDisabled = disabled || isSubmitting;
+
   return (
-    <TouchableOpacity
-      disabled={isSubmitting}
+    <Pressable
+      disabled={isDisabled}
       onPress={onPress}
-      style={[
-        {
-          paddingVertical: 12,
-          paddingHorizontal: 16,
-          borderRadius: 8,
-          alignItems: 'center',
-          justifyContent: 'center',
-          backgroundColor: isSubmitting ? '#aaa' : '#007bff',
-        },
+      style={({ pressed }) => [
+        styles.button,
+        isDisabled && styles.buttonDisabled,
+        pressed && !isDisabled ? styles.buttonPressed : null,
         style,
       ]}
     >
       {isSubmitting ? (
-        <ActivityIndicator color="#fff" />
+        <ActivityIndicator color={colors.buttonPrimaryText} />
       ) : (
-        <Text style={{ color: '#fff', fontWeight: '600' }}>{title}</Text>
+        <Text style={styles.text}>{title}</Text>
       )}
-    </TouchableOpacity>
+    </Pressable>
   );
 };
+
+const styles = StyleSheet.create({
+  button: {
+    backgroundColor: colors.buttonPrimary,
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  buttonPressed: {
+    backgroundColor: colors.buttonPrimaryHover,
+  },
+  buttonDisabled: {
+    opacity: 0.6,
+  },
+  text: {
+    color: colors.buttonPrimaryText,
+    fontWeight: '600',
+    fontSize: 16,
+  },
+});

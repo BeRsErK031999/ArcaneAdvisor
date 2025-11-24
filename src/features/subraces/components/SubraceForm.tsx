@@ -1,7 +1,7 @@
 import React from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Text, TextInput, View } from 'react-native';
+import { StyleSheet, Text, TextInput, View } from 'react-native';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { createSubrace } from '@/features/subraces/api/createSubrace';
@@ -9,6 +9,7 @@ import { SubraceCreateSchema, type SubraceCreateInput } from '@/features/subrace
 import { FormErrorText } from '@/shared/forms/FormErrorText';
 import { FormScreenLayout } from '@/shared/forms/FormScreenLayout';
 import { FormSubmitButton } from '@/shared/forms/FormSubmitButton';
+import { colors } from '@/shared/theme/colors';
 
 interface SubraceFormProps {
   onSuccess?: () => void;
@@ -83,12 +84,10 @@ export const SubraceForm: React.FC<SubraceFormProps> = ({ onSuccess }) => {
 
   return (
     <FormScreenLayout title="Создать подрасу">
-      {submitError ? (
-        <Text style={{ color: 'red', marginBottom: 8 }}>{submitError}</Text>
-      ) : null}
+      {submitError ? <Text style={styles.errorText}>{submitError}</Text> : null}
 
-      <View style={{ gap: 4 }}>
-        <Text>UUID расы</Text>
+      <View style={styles.field}>
+        <Text style={styles.label}>UUID расы</Text>
         <Controller
           control={control}
           name="race_id"
@@ -98,15 +97,16 @@ export const SubraceForm: React.FC<SubraceFormProps> = ({ onSuccess }) => {
               onChangeText={onChange}
               onBlur={onBlur}
               placeholder="00000000-0000-0000-0000-000000000000"
-              style={{ borderWidth: 1, borderColor: '#ccc', padding: 8, borderRadius: 4 }}
+              style={styles.input}
+              placeholderTextColor={colors.inputPlaceholder}
             />
           )}
         />
-        <FormErrorText message={errors.race_id?.message} />
+        <FormErrorText>{errors.race_id?.message}</FormErrorText>
       </View>
 
-      <View style={{ gap: 4 }}>
-        <Text>Название подрасы</Text>
+      <View style={styles.field}>
+        <Text style={styles.label}>Название подрасы</Text>
         <Controller
           control={control}
           name="name"
@@ -116,15 +116,16 @@ export const SubraceForm: React.FC<SubraceFormProps> = ({ onSuccess }) => {
               onChangeText={onChange}
               onBlur={onBlur}
               placeholder="Лесной эльф"
-              style={{ borderWidth: 1, borderColor: '#ccc', padding: 8, borderRadius: 4 }}
+              style={styles.input}
+              placeholderTextColor={colors.inputPlaceholder}
             />
           )}
         />
-        <FormErrorText message={errors.name?.message} />
+        <FormErrorText>{errors.name?.message}</FormErrorText>
       </View>
 
-      <View style={{ gap: 4 }}>
-        <Text>Английское название</Text>
+      <View style={styles.field}>
+        <Text style={styles.label}>Английское название</Text>
         <Controller
           control={control}
           name="name_in_english"
@@ -134,15 +135,16 @@ export const SubraceForm: React.FC<SubraceFormProps> = ({ onSuccess }) => {
               onChangeText={onChange}
               onBlur={onBlur}
               placeholder="Wood Elf"
-              style={{ borderWidth: 1, borderColor: '#ccc', padding: 8, borderRadius: 4 }}
+              style={styles.input}
+              placeholderTextColor={colors.inputPlaceholder}
             />
           )}
         />
-        <FormErrorText message={errors.name_in_english?.message} />
+        <FormErrorText>{errors.name_in_english?.message}</FormErrorText>
       </View>
 
-      <View style={{ gap: 4 }}>
-        <Text>Описание</Text>
+      <View style={styles.field}>
+        <Text style={styles.label}>Описание</Text>
         <Controller
           control={control}
           name="description"
@@ -153,29 +155,24 @@ export const SubraceForm: React.FC<SubraceFormProps> = ({ onSuccess }) => {
               onBlur={onBlur}
               placeholder="Опишите подрасу"
               multiline
-              style={{
-                borderWidth: 1,
-                borderColor: '#ccc',
-                padding: 8,
-                borderRadius: 4,
-                minHeight: 100,
-                textAlignVertical: 'top',
-              }}
+              style={[styles.input, styles.textArea]}
+              placeholderTextColor={colors.inputPlaceholder}
             />
           )}
         />
-        <FormErrorText message={errors.description?.message} />
+        <FormErrorText>{errors.description?.message}</FormErrorText>
       </View>
 
-      <View style={{ gap: 4 }}>
-        <Text>Бонусы к характеристикам (через запятую)</Text>
+      <View style={styles.field}>
+        <Text style={styles.label}>Бонусы к характеристикам (через запятую)</Text>
         <TextInput
           value={abilityBonuses}
           onChangeText={setAbilityBonuses}
           placeholder="DEX:+2, CHA:+1"
-          style={{ borderWidth: 1, borderColor: '#ccc', padding: 8, borderRadius: 4 }}
+          style={styles.input}
+          placeholderTextColor={colors.inputPlaceholder}
         />
-        <Text style={{ fontSize: 12, color: '#555' }}>
+        <Text style={styles.helperText}>
           Введите бонусы в формате MOD:+N. Поле необязательно.
         </Text>
       </View>
@@ -188,3 +185,36 @@ export const SubraceForm: React.FC<SubraceFormProps> = ({ onSuccess }) => {
     </FormScreenLayout>
   );
 };
+
+const styles = StyleSheet.create({
+  errorText: {
+    color: colors.error,
+    marginBottom: 8,
+    fontWeight: '600',
+  },
+  field: {
+    gap: 4,
+  },
+  label: {
+    fontWeight: '600',
+    color: colors.textPrimary,
+    marginBottom: 4,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: colors.inputBorder,
+    backgroundColor: colors.inputBackground,
+    color: colors.textPrimary,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 6,
+  },
+  textArea: {
+    minHeight: 100,
+    textAlignVertical: 'top',
+  },
+  helperText: {
+    fontSize: 12,
+    color: colors.textSecondary,
+  },
+});
