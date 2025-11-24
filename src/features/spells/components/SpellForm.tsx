@@ -1,7 +1,7 @@
 import React from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Switch, Text, TextInput, View } from 'react-native';
+import { StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { SpellCreateSchema, type SpellCreateInput } from '@/features/spells/api/types';
 import { createSpell } from '@/features/spells/api/createSpell';
@@ -9,6 +9,7 @@ import { updateSpell } from '@/features/spells/api/updateSpell';
 import { FormErrorText } from '@/shared/forms/FormErrorText';
 import { FormScreenLayout } from '@/shared/forms/FormScreenLayout';
 import { FormSubmitButton } from '@/shared/forms/FormSubmitButton';
+import { colors } from '@/shared/theme/colors';
 
 type SpellFormMode = 'create' | 'edit';
 
@@ -134,11 +135,10 @@ export const SpellForm: React.FC<SpellFormProps> = ({
 
   return (
     <FormScreenLayout title={formTitle}>
-      {submitError ? (
-        <Text style={{ color: 'red' }}>{submitError}</Text>
-      ) : null}
-      <View style={{ gap: 4 }}>
-        <Text>Название</Text>
+      {submitError ? <Text style={styles.errorText}>{submitError}</Text> : null}
+
+      <View style={styles.field}>
+        <Text style={styles.label}>Название</Text>
         <Controller
           control={control}
           name="name"
@@ -148,15 +148,16 @@ export const SpellForm: React.FC<SpellFormProps> = ({
               onChangeText={onChange}
               onBlur={onBlur}
               placeholder="Огненный шар"
-              style={{ borderWidth: 1, borderColor: '#ccc', padding: 8, borderRadius: 4 }}
+              style={styles.input}
+              placeholderTextColor={colors.inputPlaceholder}
             />
           )}
         />
-        <FormErrorText message={errors.name?.message} />
+        <FormErrorText>{errors.name?.message}</FormErrorText>
       </View>
 
-      <View style={{ gap: 4 }}>
-        <Text>Уровень</Text>
+      <View style={styles.field}>
+        <Text style={styles.label}>Уровень</Text>
         <Controller
           control={control}
           name="level"
@@ -167,15 +168,16 @@ export const SpellForm: React.FC<SpellFormProps> = ({
               onBlur={onBlur}
               keyboardType="numeric"
               placeholder="1"
-              style={{ borderWidth: 1, borderColor: '#ccc', padding: 8, borderRadius: 4 }}
+              style={styles.input}
+              placeholderTextColor={colors.inputPlaceholder}
             />
           )}
         />
-        <FormErrorText message={errors.level?.message} />
+        <FormErrorText>{errors.level?.message}</FormErrorText>
       </View>
 
-      <View style={{ gap: 4 }}>
-        <Text>Школа</Text>
+      <View style={styles.field}>
+        <Text style={styles.label}>Школа</Text>
         <Controller
           control={control}
           name="school"
@@ -185,15 +187,16 @@ export const SpellForm: React.FC<SpellFormProps> = ({
               onChangeText={onChange}
               onBlur={onBlur}
               placeholder="Эвокация"
-              style={{ borderWidth: 1, borderColor: '#ccc', padding: 8, borderRadius: 4 }}
+              style={styles.input}
+              placeholderTextColor={colors.inputPlaceholder}
             />
           )}
         />
-        <FormErrorText message={errors.school?.message} />
+        <FormErrorText>{errors.school?.message}</FormErrorText>
       </View>
 
-      <View style={{ gap: 4 }}>
-        <Text>Описание</Text>
+      <View style={styles.field}>
+        <Text style={styles.label}>Описание</Text>
         <Controller
           control={control}
           name="description"
@@ -204,23 +207,17 @@ export const SpellForm: React.FC<SpellFormProps> = ({
               onBlur={onBlur}
               placeholder="Опишите эффект заклинания"
               multiline
-              style={{
-                borderWidth: 1,
-                borderColor: '#ccc',
-                padding: 8,
-                borderRadius: 4,
-                minHeight: 100,
-                textAlignVertical: 'top',
-              }}
+              style={[styles.input, styles.textArea]}
+              placeholderTextColor={colors.inputPlaceholder}
             />
           )}
         />
-        <FormErrorText message={errors.description?.message} />
+        <FormErrorText>{errors.description?.message}</FormErrorText>
       </View>
 
-      <View style={{ gap: 8 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-          <Text>Концентрация</Text>
+      <View style={styles.section}>
+        <View style={styles.switchRow}>
+          <Text style={styles.label}>Концентрация</Text>
           <Controller
             control={control}
             name="concentration"
@@ -229,10 +226,10 @@ export const SpellForm: React.FC<SpellFormProps> = ({
             )}
           />
         </View>
-        <FormErrorText message={errors.concentration?.message} />
+        <FormErrorText>{errors.concentration?.message}</FormErrorText>
 
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-          <Text>Ритуал</Text>
+        <View style={styles.switchRow}>
+          <Text style={styles.label}>Ритуал</Text>
           <Controller
             control={control}
             name="ritual"
@@ -241,13 +238,13 @@ export const SpellForm: React.FC<SpellFormProps> = ({
             )}
           />
         </View>
-        <FormErrorText message={errors.ritual?.message} />
+        <FormErrorText>{errors.ritual?.message}</FormErrorText>
       </View>
 
-      <View style={{ gap: 4 }}>
-        <Text>Время накладывания</Text>
-        <View style={{ flexDirection: 'row', gap: 8 }}>
-          <View style={{ flex: 1 }}>
+      <View style={styles.field}>
+        <Text style={styles.label}>Время накладывания</Text>
+        <View style={styles.row}>
+          <View style={styles.column}>
             <Controller
               control={control}
               name="casting_time.count"
@@ -258,13 +255,14 @@ export const SpellForm: React.FC<SpellFormProps> = ({
                   onBlur={onBlur}
                   keyboardType="numeric"
                   placeholder="1"
-                  style={{ borderWidth: 1, borderColor: '#ccc', padding: 8, borderRadius: 4 }}
+                  style={styles.input}
+                  placeholderTextColor={colors.inputPlaceholder}
                 />
               )}
             />
-            <FormErrorText message={errors.casting_time?.count?.message} />
+            <FormErrorText>{errors.casting_time?.count?.message}</FormErrorText>
           </View>
-          <View style={{ flex: 1 }}>
+          <View style={styles.column}>
             <Controller
               control={control}
               name="casting_time.unit"
@@ -274,19 +272,20 @@ export const SpellForm: React.FC<SpellFormProps> = ({
                   onChangeText={onChange}
                   onBlur={onBlur}
                   placeholder="action"
-                  style={{ borderWidth: 1, borderColor: '#ccc', padding: 8, borderRadius: 4 }}
+                  style={styles.input}
+                  placeholderTextColor={colors.inputPlaceholder}
                 />
               )}
             />
-            <FormErrorText message={errors.casting_time?.unit?.message} />
+            <FormErrorText>{errors.casting_time?.unit?.message}</FormErrorText>
           </View>
         </View>
       </View>
 
-      <View style={{ gap: 4 }}>
-        <Text>Дистанция</Text>
-        <View style={{ flexDirection: 'row', gap: 8 }}>
-          <View style={{ flex: 1 }}>
+      <View style={styles.field}>
+        <Text style={styles.label}>Дистанция</Text>
+        <View style={styles.row}>
+          <View style={styles.column}>
             <Controller
               control={control}
               name="spell_range.count"
@@ -297,13 +296,14 @@ export const SpellForm: React.FC<SpellFormProps> = ({
                   onBlur={onBlur}
                   keyboardType="numeric"
                   placeholder="60"
-                  style={{ borderWidth: 1, borderColor: '#ccc', padding: 8, borderRadius: 4 }}
+                  style={styles.input}
+                  placeholderTextColor={colors.inputPlaceholder}
                 />
               )}
             />
-            <FormErrorText message={errors.spell_range?.count?.message} />
+            <FormErrorText>{errors.spell_range?.count?.message}</FormErrorText>
           </View>
-          <View style={{ flex: 1 }}>
+          <View style={styles.column}>
             <Controller
               control={control}
               name="spell_range.unit"
@@ -313,19 +313,20 @@ export const SpellForm: React.FC<SpellFormProps> = ({
                   onChangeText={onChange}
                   onBlur={onBlur}
                   placeholder="ft"
-                  style={{ borderWidth: 1, borderColor: '#ccc', padding: 8, borderRadius: 4 }}
+                  style={styles.input}
+                  placeholderTextColor={colors.inputPlaceholder}
                 />
               )}
             />
-            <FormErrorText message={errors.spell_range?.unit?.message} />
+            <FormErrorText>{errors.spell_range?.unit?.message}</FormErrorText>
           </View>
         </View>
       </View>
 
-      <View style={{ gap: 8 }}>
-        <Text>Компоненты</Text>
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-          <Text>Вербальный</Text>
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Компоненты</Text>
+        <View style={styles.switchRow}>
+          <Text style={styles.label}>Вербальный</Text>
           <Controller
             control={control}
             name="components.verbal"
@@ -334,10 +335,10 @@ export const SpellForm: React.FC<SpellFormProps> = ({
             )}
           />
         </View>
-        <FormErrorText message={errors.components?.verbal?.message} />
+        <FormErrorText>{errors.components?.verbal?.message}</FormErrorText>
 
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-          <Text>Соматический</Text>
+        <View style={styles.switchRow}>
+          <Text style={styles.label}>Соматический</Text>
           <Controller
             control={control}
             name="components.symbolic"
@@ -346,10 +347,10 @@ export const SpellForm: React.FC<SpellFormProps> = ({
             )}
           />
         </View>
-        <FormErrorText message={errors.components?.symbolic?.message} />
+        <FormErrorText>{errors.components?.symbolic?.message}</FormErrorText>
 
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-          <Text>Материальный</Text>
+        <View style={styles.switchRow}>
+          <Text style={styles.label}>Материальный</Text>
           <Controller
             control={control}
             name="components.material"
@@ -358,10 +359,10 @@ export const SpellForm: React.FC<SpellFormProps> = ({
             )}
           />
         </View>
-        <FormErrorText message={errors.components?.material?.message} />
+        <FormErrorText>{errors.components?.material?.message}</FormErrorText>
 
-        <View style={{ gap: 4 }}>
-          <Text>Материалы (через запятую)</Text>
+        <View style={styles.field}>
+          <Text style={styles.label}>Материалы (через запятую)</Text>
           <Controller
             control={control}
             name="components.materials"
@@ -378,11 +379,12 @@ export const SpellForm: React.FC<SpellFormProps> = ({
                 }
                 onBlur={onBlur}
                 placeholder="перо, песок"
-                style={{ borderWidth: 1, borderColor: '#ccc', padding: 8, borderRadius: 4 }}
+                style={styles.input}
+                placeholderTextColor={colors.inputPlaceholder}
               />
             )}
           />
-          <FormErrorText message={errors.components?.materials?.message} />
+          <FormErrorText>{errors.components?.materials?.message}</FormErrorText>
         </View>
       </View>
 
@@ -390,3 +392,52 @@ export const SpellForm: React.FC<SpellFormProps> = ({
     </FormScreenLayout>
   );
 };
+
+const styles = StyleSheet.create({
+  errorText: {
+    color: colors.error,
+    marginBottom: 8,
+    fontWeight: '600',
+  },
+  field: {
+    gap: 4,
+  },
+  label: {
+    fontWeight: '600',
+    color: colors.textPrimary,
+    marginBottom: 4,
+  },
+  section: {
+    gap: 8,
+  },
+  sectionTitle: {
+    fontWeight: '700',
+    color: colors.textPrimary,
+    marginBottom: 4,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: colors.inputBorder,
+    backgroundColor: colors.inputBackground,
+    color: colors.textPrimary,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 6,
+  },
+  textArea: {
+    minHeight: 100,
+    textAlignVertical: 'top',
+  },
+  switchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  row: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  column: {
+    flex: 1,
+  },
+});

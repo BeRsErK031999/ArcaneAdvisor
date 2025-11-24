@@ -1,7 +1,7 @@
 import React from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Text, TextInput, View } from 'react-native';
+import { StyleSheet, Text, TextInput, View } from 'react-native';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   RaceCreateSchema,
@@ -11,6 +11,7 @@ import { createRace } from '@/features/races/api/createRace';
 import { FormErrorText } from '@/shared/forms/FormErrorText';
 import { FormScreenLayout } from '@/shared/forms/FormScreenLayout';
 import { FormSubmitButton } from '@/shared/forms/FormSubmitButton';
+import { colors } from '@/shared/theme/colors';
 
 interface RaceFormProps {
   onSuccess?: () => void;
@@ -94,12 +95,10 @@ export const RaceForm: React.FC<RaceFormProps> = ({ onSuccess }) => {
 
   return (
     <FormScreenLayout title="Создать расу">
-      {submitError ? (
-        <Text style={{ color: 'red', marginBottom: 8 }}>{submitError}</Text>
-      ) : null}
+      {submitError ? <Text style={styles.errorText}>{submitError}</Text> : null}
 
-      <View style={{ gap: 4 }}>
-        <Text>Название</Text>
+      <View style={styles.field}>
+        <Text style={styles.label}>Название</Text>
         <Controller
           control={control}
           name="name"
@@ -109,15 +108,16 @@ export const RaceForm: React.FC<RaceFormProps> = ({ onSuccess }) => {
               onChangeText={onChange}
               onBlur={onBlur}
               placeholder="Гном"
-              style={{ borderWidth: 1, borderColor: '#ccc', padding: 8, borderRadius: 4 }}
+              style={styles.input}
+              placeholderTextColor={colors.inputPlaceholder}
             />
           )}
         />
-        <FormErrorText message={errors.name?.message} />
+        <FormErrorText>{errors.name?.message}</FormErrorText>
       </View>
 
-      <View style={{ gap: 4 }}>
-        <Text>Английское название</Text>
+      <View style={styles.field}>
+        <Text style={styles.label}>Английское название</Text>
         <Controller
           control={control}
           name="name_in_english"
@@ -127,15 +127,16 @@ export const RaceForm: React.FC<RaceFormProps> = ({ onSuccess }) => {
               onChangeText={onChange}
               onBlur={onBlur}
               placeholder="Dwarf"
-              style={{ borderWidth: 1, borderColor: '#ccc', padding: 8, borderRadius: 4 }}
+              style={styles.input}
+              placeholderTextColor={colors.inputPlaceholder}
             />
           )}
         />
-        <FormErrorText message={errors.name_in_english?.message} />
+        <FormErrorText>{errors.name_in_english?.message}</FormErrorText>
       </View>
 
-      <View style={{ gap: 4 }}>
-        <Text>Описание</Text>
+      <View style={styles.field}>
+        <Text style={styles.label}>Описание</Text>
         <Controller
           control={control}
           name="description"
@@ -146,22 +147,16 @@ export const RaceForm: React.FC<RaceFormProps> = ({ onSuccess }) => {
               onBlur={onBlur}
               placeholder="Опишите расу"
               multiline
-              style={{
-                borderWidth: 1,
-                borderColor: '#ccc',
-                padding: 8,
-                borderRadius: 4,
-                minHeight: 100,
-                textAlignVertical: 'top',
-              }}
+              style={[styles.input, styles.textArea]}
+              placeholderTextColor={colors.inputPlaceholder}
             />
           )}
         />
-        <FormErrorText message={errors.description?.message} />
+        <FormErrorText>{errors.description?.message}</FormErrorText>
       </View>
 
-      <View style={{ gap: 4 }}>
-        <Text>Тип существа</Text>
+      <View style={styles.field}>
+        <Text style={styles.label}>Тип существа</Text>
         <Controller
           control={control}
           name="creature_type"
@@ -171,15 +166,16 @@ export const RaceForm: React.FC<RaceFormProps> = ({ onSuccess }) => {
               onChangeText={onChange}
               onBlur={onBlur}
               placeholder="humanoid"
-              style={{ borderWidth: 1, borderColor: '#ccc', padding: 8, borderRadius: 4 }}
+              style={styles.input}
+              placeholderTextColor={colors.inputPlaceholder}
             />
           )}
         />
-        <FormErrorText message={errors.creature_type?.message} />
+        <FormErrorText>{errors.creature_type?.message}</FormErrorText>
       </View>
 
-      <View style={{ gap: 4 }}>
-        <Text>Размер</Text>
+      <View style={styles.field}>
+        <Text style={styles.label}>Размер</Text>
         <Controller
           control={control}
           name="creature_size"
@@ -189,18 +185,19 @@ export const RaceForm: React.FC<RaceFormProps> = ({ onSuccess }) => {
               onChangeText={onChange}
               onBlur={onBlur}
               placeholder="medium"
-              style={{ borderWidth: 1, borderColor: '#ccc', padding: 8, borderRadius: 4 }}
+              style={styles.input}
+              placeholderTextColor={colors.inputPlaceholder}
             />
           )}
         />
-        <FormErrorText message={errors.creature_size?.message} />
+        <FormErrorText>{errors.creature_size?.message}</FormErrorText>
       </View>
 
-      <View style={{ gap: 8 }}>
-        <Text style={{ fontWeight: '600' }}>Скорость</Text>
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Скорость</Text>
 
-        <View style={{ gap: 4 }}>
-          <Text>Базовая скорость</Text>
+        <View style={styles.field}>
+          <Text style={styles.label}>Базовая скорость</Text>
           <Controller
             control={control}
             name="speed.base_speed.count"
@@ -211,15 +208,16 @@ export const RaceForm: React.FC<RaceFormProps> = ({ onSuccess }) => {
                 onBlur={onBlur}
                 keyboardType="numeric"
                 placeholder="30"
-                style={{ borderWidth: 1, borderColor: '#ccc', padding: 8, borderRadius: 4 }}
+                style={styles.input}
+                placeholderTextColor={colors.inputPlaceholder}
               />
             )}
           />
-          <FormErrorText message={errors.speed?.base_speed?.count?.message} />
+          <FormErrorText>{errors.speed?.base_speed?.count?.message}</FormErrorText>
         </View>
 
-        <View style={{ gap: 4 }}>
-          <Text>Единица измерения</Text>
+        <View style={styles.field}>
+          <Text style={styles.label}>Единица измерения</Text>
           <Controller
             control={control}
             name="speed.base_speed.unit"
@@ -229,15 +227,16 @@ export const RaceForm: React.FC<RaceFormProps> = ({ onSuccess }) => {
                 onChangeText={onChange}
                 onBlur={onBlur}
                 placeholder="ft"
-                style={{ borderWidth: 1, borderColor: '#ccc', padding: 8, borderRadius: 4 }}
+                style={styles.input}
+                placeholderTextColor={colors.inputPlaceholder}
               />
             )}
           />
-          <FormErrorText message={errors.speed?.base_speed?.unit?.message} />
+          <FormErrorText>{errors.speed?.base_speed?.unit?.message}</FormErrorText>
         </View>
 
-        <View style={{ gap: 4 }}>
-          <Text>Описание скорости</Text>
+        <View style={styles.field}>
+          <Text style={styles.label}>Описание скорости</Text>
           <Controller
             control={control}
             name="speed.description"
@@ -247,19 +246,20 @@ export const RaceForm: React.FC<RaceFormProps> = ({ onSuccess }) => {
                 onChangeText={onChange}
                 onBlur={onBlur}
                 placeholder="Базовая скорость пешком"
-                style={{ borderWidth: 1, borderColor: '#ccc', padding: 8, borderRadius: 4 }}
+                style={styles.input}
+                placeholderTextColor={colors.inputPlaceholder}
               />
             )}
           />
-          <FormErrorText message={errors.speed?.description?.message} />
+          <FormErrorText>{errors.speed?.description?.message}</FormErrorText>
         </View>
       </View>
 
-      <View style={{ gap: 8 }}>
-        <Text style={{ fontWeight: '600' }}>Возраст</Text>
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Возраст</Text>
 
-        <View style={{ gap: 4 }}>
-          <Text>Максимальный возраст</Text>
+        <View style={styles.field}>
+          <Text style={styles.label}>Максимальный возраст</Text>
           <Controller
             control={control}
             name="age.max_age"
@@ -270,15 +270,16 @@ export const RaceForm: React.FC<RaceFormProps> = ({ onSuccess }) => {
                 onBlur={onBlur}
                 keyboardType="numeric"
                 placeholder="80"
-                style={{ borderWidth: 1, borderColor: '#ccc', padding: 8, borderRadius: 4 }}
+                style={styles.input}
+                placeholderTextColor={colors.inputPlaceholder}
               />
             )}
           />
-          <FormErrorText message={errors.age?.max_age?.message} />
+          <FormErrorText>{errors.age?.max_age?.message}</FormErrorText>
         </View>
 
-        <View style={{ gap: 4 }}>
-          <Text>Описание возраста</Text>
+        <View style={styles.field}>
+          <Text style={styles.label}>Описание возраста</Text>
           <Controller
             control={control}
             name="age.description"
@@ -288,31 +289,33 @@ export const RaceForm: React.FC<RaceFormProps> = ({ onSuccess }) => {
                 onChangeText={onChange}
                 onBlur={onBlur}
                 placeholder="Средняя продолжительность жизни"
-                style={{ borderWidth: 1, borderColor: '#ccc', padding: 8, borderRadius: 4 }}
+                style={styles.input}
+                placeholderTextColor={colors.inputPlaceholder}
               />
             )}
           />
-          <FormErrorText message={errors.age?.description?.message} />
+          <FormErrorText>{errors.age?.description?.message}</FormErrorText>
         </View>
       </View>
 
-      <View style={{ gap: 4 }}>
-        <Text>Модификаторы характеристик</Text>
-        <Text style={{ color: '#555', fontSize: 12 }}>
+      <View style={styles.field}>
+        <Text style={styles.label}>Модификаторы характеристик</Text>
+        <Text style={styles.helperText}>
           strength:+2, charisma:+1
         </Text>
         <TextInput
           value={abilityBonuses}
           onChangeText={setAbilityBonuses}
           placeholder="strength:+2, charisma:+1"
-          style={{ borderWidth: 1, borderColor: '#ccc', padding: 8, borderRadius: 4 }}
+          style={styles.input}
+          placeholderTextColor={colors.inputPlaceholder}
         />
         {/* TODO: parse ability bonuses from text with better UX */}
-        <FormErrorText message={errors.increase_modifiers?.message} />
+        <FormErrorText>{errors.increase_modifiers?.message}</FormErrorText>
       </View>
 
-      <View style={{ gap: 4 }}>
-        <Text>Источник</Text>
+      <View style={styles.field}>
+        <Text style={styles.label}>Источник</Text>
         <Controller
           control={control}
           name="source_id"
@@ -322,11 +325,12 @@ export const RaceForm: React.FC<RaceFormProps> = ({ onSuccess }) => {
               onChangeText={onChange}
               onBlur={onBlur}
               placeholder="UUID источника"
-              style={{ borderWidth: 1, borderColor: '#ccc', padding: 8, borderRadius: 4 }}
+              style={styles.input}
+              placeholderTextColor={colors.inputPlaceholder}
             />
           )}
         />
-        <FormErrorText message={errors.source_id?.message} />
+        <FormErrorText>{errors.source_id?.message}</FormErrorText>
       </View>
 
       {/* TODO: добавить форму для особенностей */}
@@ -339,3 +343,44 @@ export const RaceForm: React.FC<RaceFormProps> = ({ onSuccess }) => {
     </FormScreenLayout>
   );
 };
+
+const styles = StyleSheet.create({
+  errorText: {
+    color: colors.error,
+    marginBottom: 8,
+    fontWeight: '600',
+  },
+  field: {
+    gap: 4,
+  },
+  label: {
+    fontWeight: '600',
+    color: colors.textPrimary,
+    marginBottom: 4,
+  },
+  section: {
+    gap: 8,
+  },
+  sectionTitle: {
+    fontWeight: '700',
+    color: colors.textPrimary,
+    marginBottom: 4,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: colors.inputBorder,
+    backgroundColor: colors.inputBackground,
+    color: colors.textPrimary,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 6,
+  },
+  textArea: {
+    minHeight: 100,
+    textAlignVertical: 'top',
+  },
+  helperText: {
+    color: colors.textSecondary,
+    fontSize: 12,
+  },
+});

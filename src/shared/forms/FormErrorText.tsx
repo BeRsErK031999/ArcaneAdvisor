@@ -1,16 +1,21 @@
 import React from 'react';
-import { Text } from 'react-native';
+import { StyleSheet, Text } from 'react-native';
+import { colors } from '@/shared/theme/colors';
 
 interface FormErrorTextProps {
-  message?: string;
+  children?: React.ReactNode;
 }
 
-export const FormErrorText: React.FC<FormErrorTextProps> = ({ message }) => {
-  if (!message) return null;
+export const FormErrorText: React.FC<FormErrorTextProps> = ({ children }) => {
+  if (!children) return null;
 
-  return (
-    <Text style={{ color: 'red', fontSize: 12, marginTop: 4 }}>
-      {message}
-    </Text>
-  );
+  return <Text style={styles.error}>{children}</Text>;
 };
+
+const styles = StyleSheet.create({
+  error: {
+    color: colors.error,
+    fontSize: 12,
+    marginTop: 4,
+  },
+});

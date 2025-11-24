@@ -1,7 +1,7 @@
 import React from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Text, TextInput, View } from 'react-native';
+import { StyleSheet, Text, TextInput, View } from 'react-native';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   ClassCreateSchema,
@@ -11,6 +11,7 @@ import { createClass } from '@/features/classes/api/createClass';
 import { FormErrorText } from '@/shared/forms/FormErrorText';
 import { FormScreenLayout } from '@/shared/forms/FormScreenLayout';
 import { FormSubmitButton } from '@/shared/forms/FormSubmitButton';
+import { colors } from '@/shared/theme/colors';
 
 interface ClassFormProps {
   onSuccess?: () => void;
@@ -77,10 +78,10 @@ export const ClassForm: React.FC<ClassFormProps> = ({ onSuccess }) => {
 
   return (
     <FormScreenLayout title="Создать класс">
-      {submitError ? <Text style={{ color: 'red' }}>{submitError}</Text> : null}
+      {submitError ? <Text style={styles.errorText}>{submitError}</Text> : null}
 
-      <View style={{ gap: 4 }}>
-        <Text>Название</Text>
+      <View style={styles.field}>
+        <Text style={styles.label}>Название</Text>
         <Controller
           control={control}
           name="name"
@@ -90,15 +91,16 @@ export const ClassForm: React.FC<ClassFormProps> = ({ onSuccess }) => {
               onChangeText={onChange}
               onBlur={onBlur}
               placeholder="Волшебник"
-              style={{ borderWidth: 1, borderColor: '#ccc', padding: 8, borderRadius: 4 }}
+              style={styles.input}
+              placeholderTextColor={colors.inputPlaceholder}
             />
           )}
         />
-        <FormErrorText message={errors.name?.message} />
+        <FormErrorText>{errors.name?.message}</FormErrorText>
       </View>
 
-      <View style={{ gap: 4 }}>
-        <Text>Английское название</Text>
+      <View style={styles.field}>
+        <Text style={styles.label}>Английское название</Text>
         <Controller
           control={control}
           name="name_in_english"
@@ -108,15 +110,16 @@ export const ClassForm: React.FC<ClassFormProps> = ({ onSuccess }) => {
               onChangeText={onChange}
               onBlur={onBlur}
               placeholder="Wizard"
-              style={{ borderWidth: 1, borderColor: '#ccc', padding: 8, borderRadius: 4 }}
+              style={styles.input}
+              placeholderTextColor={colors.inputPlaceholder}
             />
           )}
         />
-        <FormErrorText message={errors.name_in_english?.message} />
+        <FormErrorText>{errors.name_in_english?.message}</FormErrorText>
       </View>
 
-      <View style={{ gap: 4 }}>
-        <Text>Описание</Text>
+      <View style={styles.field}>
+        <Text style={styles.label}>Описание</Text>
         <Controller
           control={control}
           name="description"
@@ -127,22 +130,16 @@ export const ClassForm: React.FC<ClassFormProps> = ({ onSuccess }) => {
               onBlur={onBlur}
               placeholder="Опишите класс"
               multiline
-              style={{
-                borderWidth: 1,
-                borderColor: '#ccc',
-                padding: 8,
-                borderRadius: 4,
-                minHeight: 100,
-                textAlignVertical: 'top',
-              }}
+              style={[styles.input, styles.textArea]}
+              placeholderTextColor={colors.inputPlaceholder}
             />
           )}
         />
-        <FormErrorText message={errors.description?.message} />
+        <FormErrorText>{errors.description?.message}</FormErrorText>
       </View>
 
-      <View style={{ gap: 4 }}>
-        <Text>Основные характеристики</Text>
+      <View style={styles.field}>
+        <Text style={styles.label}>Основные характеристики</Text>
         <Controller
           control={control}
           name="primary_modifiers"
@@ -154,23 +151,24 @@ export const ClassForm: React.FC<ClassFormProps> = ({ onSuccess }) => {
                   text
                     .split(',')
                     .map((mod) => mod.trim())
-                    .filter(Boolean),
-                )
+                  .filter(Boolean),
+              )
               }
               onBlur={onBlur}
               placeholder="strength, charisma"
-              style={{ borderWidth: 1, borderColor: '#ccc', padding: 8, borderRadius: 4 }}
+              style={styles.input}
+              placeholderTextColor={colors.inputPlaceholder}
             />
           )}
         />
-        <FormErrorText message={errors.primary_modifiers?.message} />
+        <FormErrorText>{errors.primary_modifiers?.message}</FormErrorText>
       </View>
 
-      <View style={{ gap: 8 }}>
-        <Text style={{ fontWeight: '600' }}>Хиты</Text>
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Хиты</Text>
 
-        <View style={{ gap: 4 }}>
-          <Text>Кость хитов — количество</Text>
+        <View style={styles.field}>
+          <Text style={styles.label}>Кость хитов — количество</Text>
           <Controller
             control={control}
             name="hits.hit_dice.count"
@@ -181,15 +179,16 @@ export const ClassForm: React.FC<ClassFormProps> = ({ onSuccess }) => {
                 onBlur={onBlur}
                 keyboardType="numeric"
                 placeholder="1"
-                style={{ borderWidth: 1, borderColor: '#ccc', padding: 8, borderRadius: 4 }}
+                style={styles.input}
+                placeholderTextColor={colors.inputPlaceholder}
               />
             )}
           />
-          <FormErrorText message={errors.hits?.hit_dice?.count?.message} />
+          <FormErrorText>{errors.hits?.hit_dice?.count?.message}</FormErrorText>
         </View>
 
-        <View style={{ gap: 4 }}>
-          <Text>Кость хитов — тип</Text>
+        <View style={styles.field}>
+          <Text style={styles.label}>Кость хитов — тип</Text>
           <Controller
             control={control}
             name="hits.hit_dice.dice_type"
@@ -199,15 +198,16 @@ export const ClassForm: React.FC<ClassFormProps> = ({ onSuccess }) => {
                 onChangeText={onChange}
                 onBlur={onBlur}
                 placeholder="d6, d8, d10"
-                style={{ borderWidth: 1, borderColor: '#ccc', padding: 8, borderRadius: 4 }}
+                style={styles.input}
+                placeholderTextColor={colors.inputPlaceholder}
               />
             )}
           />
-          <FormErrorText message={errors.hits?.hit_dice?.dice_type?.message} />
+          <FormErrorText>{errors.hits?.hit_dice?.dice_type?.message}</FormErrorText>
         </View>
 
-        <View style={{ gap: 4 }}>
-          <Text>Стартовые хиты</Text>
+        <View style={styles.field}>
+          <Text style={styles.label}>Стартовые хиты</Text>
           <Controller
             control={control}
             name="hits.starting_hits"
@@ -218,15 +218,16 @@ export const ClassForm: React.FC<ClassFormProps> = ({ onSuccess }) => {
                 onBlur={onBlur}
                 keyboardType="numeric"
                 placeholder="8"
-                style={{ borderWidth: 1, borderColor: '#ccc', padding: 8, borderRadius: 4 }}
+                style={styles.input}
+                placeholderTextColor={colors.inputPlaceholder}
               />
             )}
           />
-          <FormErrorText message={errors.hits?.starting_hits?.message} />
+          <FormErrorText>{errors.hits?.starting_hits?.message}</FormErrorText>
         </View>
 
-        <View style={{ gap: 4 }}>
-          <Text>Модификатор хитов</Text>
+        <View style={styles.field}>
+          <Text style={styles.label}>Модификатор хитов</Text>
           <Controller
             control={control}
             name="hits.hit_modifier"
@@ -236,15 +237,16 @@ export const ClassForm: React.FC<ClassFormProps> = ({ onSuccess }) => {
                 onChangeText={onChange}
                 onBlur={onBlur}
                 placeholder="constitution"
-                style={{ borderWidth: 1, borderColor: '#ccc', padding: 8, borderRadius: 4 }}
+                style={styles.input}
+                placeholderTextColor={colors.inputPlaceholder}
               />
             )}
           />
-          <FormErrorText message={errors.hits?.hit_modifier?.message} />
+          <FormErrorText>{errors.hits?.hit_modifier?.message}</FormErrorText>
         </View>
 
-        <View style={{ gap: 4 }}>
-          <Text>Хиты за следующий уровень</Text>
+        <View style={styles.field}>
+          <Text style={styles.label}>Хиты за следующий уровень</Text>
           <Controller
             control={control}
             name="hits.next_level_hits"
@@ -255,19 +257,20 @@ export const ClassForm: React.FC<ClassFormProps> = ({ onSuccess }) => {
                 onBlur={onBlur}
                 keyboardType="numeric"
                 placeholder="5"
-                style={{ borderWidth: 1, borderColor: '#ccc', padding: 8, borderRadius: 4 }}
+                style={styles.input}
+                placeholderTextColor={colors.inputPlaceholder}
               />
             )}
           />
-          <FormErrorText message={errors.hits?.next_level_hits?.message} />
+          <FormErrorText>{errors.hits?.next_level_hits?.message}</FormErrorText>
         </View>
       </View>
 
-      <View style={{ gap: 8 }}>
-        <Text style={{ fontWeight: '600' }}>Профициенции</Text>
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Профициенции</Text>
 
-        <View style={{ gap: 4 }}>
-          <Text>Спасброски</Text>
+        <View style={styles.field}>
+          <Text style={styles.label}>Спасброски</Text>
           <Controller
             control={control}
             name="proficiencies.saving_throws"
@@ -284,15 +287,16 @@ export const ClassForm: React.FC<ClassFormProps> = ({ onSuccess }) => {
                 }
                 onBlur={onBlur}
                 placeholder="strength, constitution"
-                style={{ borderWidth: 1, borderColor: '#ccc', padding: 8, borderRadius: 4 }}
+                style={styles.input}
+                placeholderTextColor={colors.inputPlaceholder}
               />
             )}
           />
-          <FormErrorText message={errors.proficiencies?.saving_throws?.message} />
+          <FormErrorText>{errors.proficiencies?.saving_throws?.message}</FormErrorText>
         </View>
 
-        <View style={{ gap: 4 }}>
-          <Text>Навыки</Text>
+        <View style={styles.field}>
+          <Text style={styles.label}>Навыки</Text>
           <Controller
             control={control}
             name="proficiencies.skills"
@@ -309,15 +313,16 @@ export const ClassForm: React.FC<ClassFormProps> = ({ onSuccess }) => {
                 }
                 onBlur={onBlur}
                 placeholder="history, arcana"
-                style={{ borderWidth: 1, borderColor: '#ccc', padding: 8, borderRadius: 4 }}
+                style={styles.input}
+                placeholderTextColor={colors.inputPlaceholder}
               />
             )}
           />
-          <FormErrorText message={errors.proficiencies?.skills?.message} />
+          <FormErrorText>{errors.proficiencies?.skills?.message}</FormErrorText>
         </View>
 
-        <View style={{ gap: 4 }}>
-          <Text>Количество навыков</Text>
+        <View style={styles.field}>
+          <Text style={styles.label}>Количество навыков</Text>
           <Controller
             control={control}
             name="proficiencies.number_skills"
@@ -328,15 +333,16 @@ export const ClassForm: React.FC<ClassFormProps> = ({ onSuccess }) => {
                 onBlur={onBlur}
                 keyboardType="numeric"
                 placeholder="2"
-                style={{ borderWidth: 1, borderColor: '#ccc', padding: 8, borderRadius: 4 }}
+                style={styles.input}
+                placeholderTextColor={colors.inputPlaceholder}
               />
             )}
           />
-          <FormErrorText message={errors.proficiencies?.number_skills?.message} />
+          <FormErrorText>{errors.proficiencies?.number_skills?.message}</FormErrorText>
         </View>
 
-        <View style={{ gap: 4 }}>
-          <Text>Количество инструментов</Text>
+        <View style={styles.field}>
+          <Text style={styles.label}>Количество инструментов</Text>
           <Controller
             control={control}
             name="proficiencies.number_tools"
@@ -347,16 +353,17 @@ export const ClassForm: React.FC<ClassFormProps> = ({ onSuccess }) => {
                 onBlur={onBlur}
                 keyboardType="numeric"
                 placeholder="0"
-                style={{ borderWidth: 1, borderColor: '#ccc', padding: 8, borderRadius: 4 }}
+                style={styles.input}
+                placeholderTextColor={colors.inputPlaceholder}
               />
             )}
           />
-          <FormErrorText message={errors.proficiencies?.number_tools?.message} />
+          <FormErrorText>{errors.proficiencies?.number_tools?.message}</FormErrorText>
         </View>
       </View>
 
-      <View style={{ gap: 4 }}>
-        <Text>ID источника</Text>
+      <View style={styles.field}>
+        <Text style={styles.label}>ID источника</Text>
         <Controller
           control={control}
           name="source_id"
@@ -366,11 +373,12 @@ export const ClassForm: React.FC<ClassFormProps> = ({ onSuccess }) => {
               onChangeText={onChange}
               onBlur={onBlur}
               placeholder="UUID источника"
-              style={{ borderWidth: 1, borderColor: '#ccc', padding: 8, borderRadius: 4 }}
+              style={styles.input}
+              placeholderTextColor={colors.inputPlaceholder}
             />
           )}
         />
-        <FormErrorText message={errors.source_id?.message} />
+        <FormErrorText>{errors.source_id?.message}</FormErrorText>
       </View>
 
       <FormSubmitButton
@@ -381,3 +389,40 @@ export const ClassForm: React.FC<ClassFormProps> = ({ onSuccess }) => {
     </FormScreenLayout>
   );
 };
+
+const styles = StyleSheet.create({
+  errorText: {
+    color: colors.error,
+    marginBottom: 8,
+    fontWeight: '600',
+  },
+  field: {
+    gap: 4,
+  },
+  label: {
+    fontWeight: '600',
+    color: colors.textPrimary,
+    marginBottom: 4,
+  },
+  section: {
+    gap: 8,
+  },
+  sectionTitle: {
+    fontWeight: '700',
+    color: colors.textPrimary,
+    marginBottom: 4,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: colors.inputBorder,
+    backgroundColor: colors.inputBackground,
+    color: colors.textPrimary,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 6,
+  },
+  textArea: {
+    minHeight: 100,
+    textAlignVertical: 'top',
+  },
+});

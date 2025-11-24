@@ -1,7 +1,7 @@
 import React from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Switch, Text, TextInput, View } from 'react-native';
+import { StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { createFeat } from '@/features/feats/api/createFeat';
@@ -9,6 +9,7 @@ import { FeatCreateSchema, type FeatCreateInput } from '@/features/feats/api/typ
 import { FormErrorText } from '@/shared/forms/FormErrorText';
 import { FormScreenLayout } from '@/shared/forms/FormScreenLayout';
 import { FormSubmitButton } from '@/shared/forms/FormSubmitButton';
+import { colors } from '@/shared/theme/colors';
 
 interface FeatFormProps {
   onSuccess?: () => void;
@@ -89,10 +90,10 @@ export const FeatForm: React.FC<FeatFormProps> = ({ onSuccess }) => {
 
   return (
     <FormScreenLayout title="Создать способность (feat)">
-      {submitError ? <Text style={{ color: 'red' }}>{submitError}</Text> : null}
+      {submitError ? <Text style={styles.errorText}>{submitError}</Text> : null}
 
-      <View style={{ gap: 4 }}>
-        <Text>Название</Text>
+      <View style={styles.field}>
+        <Text style={styles.label}>Название</Text>
         <Controller
           control={control}
           name="name"
@@ -102,15 +103,16 @@ export const FeatForm: React.FC<FeatFormProps> = ({ onSuccess }) => {
               onChangeText={onChange}
               onBlur={onBlur}
               placeholder="Двойной удар"
-              style={{ borderWidth: 1, borderColor: '#ccc', padding: 8, borderRadius: 4 }}
+              style={styles.input}
+              placeholderTextColor={colors.inputPlaceholder}
             />
           )}
         />
-        <FormErrorText message={errors.name?.message} />
+        <FormErrorText>{errors.name?.message}</FormErrorText>
       </View>
 
-      <View style={{ gap: 4 }}>
-        <Text>Описание</Text>
+      <View style={styles.field}>
+        <Text style={styles.label}>Описание</Text>
         <Controller
           control={control}
           name="description"
@@ -121,76 +123,74 @@ export const FeatForm: React.FC<FeatFormProps> = ({ onSuccess }) => {
               onBlur={onBlur}
               placeholder="Опишите эффект способности"
               multiline
-              style={{
-                borderWidth: 1,
-                borderColor: '#ccc',
-                padding: 8,
-                borderRadius: 4,
-                minHeight: 100,
-                textAlignVertical: 'top',
-              }}
+              style={[styles.input, styles.textArea]}
+              placeholderTextColor={colors.inputPlaceholder}
             />
           )}
         />
-        <FormErrorText message={errors.description?.message} />
+        <FormErrorText>{errors.description?.message}</FormErrorText>
       </View>
 
-      <View style={{ gap: 8 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-          <Text>Кастер</Text>
+      <View style={styles.section}>
+        <View style={styles.switchRow}>
+          <Text style={styles.label}>Кастер</Text>
           <Controller
             control={control}
             name="caster"
             render={({ field: { value, onChange } }) => <Switch value={value} onValueChange={onChange} />}
           />
         </View>
-        <FormErrorText message={errors.caster?.message} />
+        <FormErrorText>{errors.caster?.message}</FormErrorText>
       </View>
 
-      <View style={{ gap: 4 }}>
-        <Text>Требуемые типы брони (через запятую)</Text>
+      <View style={styles.field}>
+        <Text style={styles.label}>Требуемые типы брони (через запятую)</Text>
         <TextInput
           value={rawRequiredArmors}
           onChangeText={setRawRequiredArmors}
           placeholder="light, medium, heavy"
-          style={{ borderWidth: 1, borderColor: '#ccc', padding: 8, borderRadius: 4 }}
+          style={styles.input}
+          placeholderTextColor={colors.inputPlaceholder}
         />
-        <FormErrorText message={errors.required_armor_types?.message} />
+        <FormErrorText>{errors.required_armor_types?.message}</FormErrorText>
       </View>
 
-      <View style={{ gap: 4 }}>
-        <Text>Требуемые характеристики (через запятую)</Text>
+      <View style={styles.field}>
+        <Text style={styles.label}>Требуемые характеристики (через запятую)</Text>
         <TextInput
           value={requiredModifiersNames}
           onChangeText={setRequiredModifiersNames}
           placeholder="STR, DEX"
-          style={{ borderWidth: 1, borderColor: '#ccc', padding: 8, borderRadius: 4 }}
+          style={styles.input}
+          placeholderTextColor={colors.inputPlaceholder}
         />
-        <FormErrorText message={errors.required_modifiers?.message} />
+        <FormErrorText>{errors.required_modifiers?.message}</FormErrorText>
       </View>
 
-      <View style={{ gap: 4 }}>
-        <Text>Минимальное значение характеристики</Text>
+      <View style={styles.field}>
+        <Text style={styles.label}>Минимальное значение характеристики</Text>
         <TextInput
           value={requiredMinValue}
           onChangeText={setRequiredMinValue}
           keyboardType="numeric"
           placeholder="13"
-          style={{ borderWidth: 1, borderColor: '#ccc', padding: 8, borderRadius: 4 }}
+          style={styles.input}
+          placeholderTextColor={colors.inputPlaceholder}
         />
-        <FormErrorText message={errors.required_modifiers?.message} />
+        <FormErrorText>{errors.required_modifiers?.message}</FormErrorText>
         {/* TODO: сделать полноценный редактор модификаторов */}
       </View>
 
-      <View style={{ gap: 4 }}>
-        <Text>Увеличиваемые характеристики (через запятую)</Text>
+      <View style={styles.field}>
+        <Text style={styles.label}>Увеличиваемые характеристики (через запятую)</Text>
         <TextInput
           value={increaseModifiers}
           onChangeText={setIncreaseModifiers}
           placeholder="STR, CHA"
-          style={{ borderWidth: 1, borderColor: '#ccc', padding: 8, borderRadius: 4 }}
+          style={styles.input}
+          placeholderTextColor={colors.inputPlaceholder}
         />
-        <FormErrorText message={errors.increase_modifiers?.message} />
+        <FormErrorText>{errors.increase_modifiers?.message}</FormErrorText>
       </View>
 
       <FormSubmitButton
@@ -201,3 +201,40 @@ export const FeatForm: React.FC<FeatFormProps> = ({ onSuccess }) => {
     </FormScreenLayout>
   );
 };
+
+const styles = StyleSheet.create({
+  errorText: {
+    color: colors.error,
+    marginBottom: 8,
+    fontWeight: '600',
+  },
+  field: {
+    gap: 4,
+  },
+  label: {
+    fontWeight: '600',
+    color: colors.textPrimary,
+    marginBottom: 4,
+  },
+  section: {
+    gap: 8,
+  },
+  switchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: colors.inputBorder,
+    backgroundColor: colors.inputBackground,
+    color: colors.textPrimary,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 6,
+  },
+  textArea: {
+    minHeight: 100,
+    textAlignVertical: 'top',
+  },
+});
