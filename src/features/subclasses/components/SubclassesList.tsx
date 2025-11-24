@@ -1,11 +1,13 @@
 import React from 'react';
 import { ActivityIndicator, FlatList, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 
 import { getSubclasses } from '@/features/subclasses/api/getSubclasses';
 import type { Subclass } from '@/features/subclasses/api/types';
 
 export function SubclassesList() {
+  const router = useRouter();
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['subclasses'],
     queryFn: getSubclasses,
@@ -35,6 +37,19 @@ export function SubclassesList() {
   if (!data || data.length === 0) {
     return (
       <View style={styles.centered}>
+        <TouchableOpacity
+          onPress={() => router.push('/(tabs)/library/subclasses/create')}
+          style={{
+            margin: 16,
+            paddingVertical: 10,
+            paddingHorizontal: 16,
+            borderRadius: 8,
+            alignItems: 'center',
+            backgroundColor: '#28a745',
+          }}
+        >
+          <Text style={{ color: '#fff', fontWeight: '600' }}>+ Создать подкласс</Text>
+        </TouchableOpacity>
         <Text style={styles.helperText}>Подклассов пока нет.</Text>
       </View>
     );
@@ -53,6 +68,20 @@ export function SubclassesList() {
 
   return (
     <SafeAreaView style={styles.container}>
+      <TouchableOpacity
+        onPress={() => router.push('/(tabs)/library/subclasses/create')}
+        style={{
+          margin: 16,
+          paddingVertical: 10,
+          paddingHorizontal: 16,
+          borderRadius: 8,
+          alignItems: 'center',
+          backgroundColor: '#28a745',
+        }}
+      >
+        <Text style={{ color: '#fff', fontWeight: '600' }}>+ Создать подкласс</Text>
+      </TouchableOpacity>
+
       <FlatList
         data={data}
         keyExtractor={(item) => item.subclass_id}
