@@ -1,15 +1,33 @@
 import React from 'react';
 import { ActivityIndicator, FlatList, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
+import { useRouter } from 'expo-router';
 
 import { getSubraces } from '@/features/subraces/api/getSubraces';
 import type { Subrace } from '@/features/subraces/api/types';
 
 export function SubracesList() {
+  const router = useRouter();
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['subraces'],
     queryFn: getSubraces,
   });
+
+  const renderCreateButton = () => (
+    <TouchableOpacity
+      onPress={() => router.push('/(tabs)/library/subraces/create')}
+      style={{
+        margin: 16,
+        paddingVertical: 10,
+        paddingHorizontal: 16,
+        borderRadius: 8,
+        alignItems: 'center',
+        backgroundColor: '#28a745',
+      }}
+    >
+      <Text style={{ color: '#fff', fontWeight: '600' }}>+ Создать подрасу</Text>
+    </TouchableOpacity>
+  );
 
   if (isLoading) {
     return (
@@ -35,6 +53,7 @@ export function SubracesList() {
   if (!data || data.length === 0) {
     return (
       <View style={styles.centered}>
+        {renderCreateButton()}
         <Text style={styles.helperText}>Подрас пока нет.</Text>
       </View>
     );
@@ -60,6 +79,7 @@ export function SubracesList() {
 
   return (
     <SafeAreaView style={styles.container}>
+      {renderCreateButton()}
       <FlatList
         data={data}
         keyExtractor={(item) => item.subrace_id}
