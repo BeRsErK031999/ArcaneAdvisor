@@ -1,11 +1,13 @@
 import React from 'react';
 import { ActivityIndicator, FlatList, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
+import { useRouter } from 'expo-router';
 
 import { getFeats } from '@/features/feats/api/getFeats';
 import type { Feat } from '@/features/feats/api/types';
 
 export function FeatsList() {
+  const router = useRouter();
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['feats'],
     queryFn: getFeats,
@@ -32,13 +34,7 @@ export function FeatsList() {
     );
   }
 
-  if (!data || data.length === 0) {
-    return (
-      <View style={styles.centered}>
-        <Text style={styles.helperText}>Способностей пока нет.</Text>
-      </View>
-    );
-  }
+  const feats = data ?? [];
 
   const renderItem = ({ item }: { item: Feat }) => {
     const armorText = item.required_armor_types.length > 0
@@ -68,13 +64,33 @@ export function FeatsList() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <FlatList
-        data={data}
-        keyExtractor={(item) => item.feat_id}
-        renderItem={renderItem}
-        ItemSeparatorComponent={() => <View style={styles.separator} />}
-        contentContainerStyle={styles.listContainer}
-      />
+      <TouchableOpacity
+        onPress={() => router.push('/(tabs)/library/feats/create')}
+        style={{
+          margin: 16,
+          paddingVertical: 10,
+          paddingHorizontal: 16,
+          borderRadius: 8,
+          alignItems: 'center',
+          backgroundColor: '#28a745',
+        }}
+      >
+        <Text style={{ color: '#fff', fontWeight: '600' }}>+ Создать способность (feat)</Text>
+      </TouchableOpacity>
+
+      {feats.length === 0 ? (
+        <View style={styles.centered}>
+          <Text style={styles.helperText}>Способностей пока нет.</Text>
+        </View>
+      ) : (
+        <FlatList
+          data={feats}
+          keyExtractor={(item) => item.feat_id}
+          renderItem={renderItem}
+          ItemSeparatorComponent={() => <View style={styles.separator} />}
+          contentContainerStyle={styles.listContainer}
+        />
+      )}
     </SafeAreaView>
   );
 }
