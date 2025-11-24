@@ -1,10 +1,12 @@
 import React from 'react';
-import { ActivityIndicator, FlatList, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 
 import { getFeats } from '@/features/feats/api/getFeats';
 import type { Feat } from '@/features/feats/api/types';
+import { ScreenContainer } from '@/shared/ui/ScreenContainer';
+import { colors } from '@/shared/theme/colors';
 
 export function FeatsList() {
   const router = useRouter();
@@ -15,22 +17,22 @@ export function FeatsList() {
 
   if (isLoading) {
     return (
-      <View style={styles.centered}>
-        <ActivityIndicator />
+      <ScreenContainer style={styles.centered}>
+        <ActivityIndicator color={colors.textSecondary} />
         <Text style={styles.helperText}>Загружаю способности…</Text>
-      </View>
+      </ScreenContainer>
     );
   }
 
   if (isError) {
     console.error('Error loading feats:', error);
     return (
-      <View style={styles.centered}>
+      <ScreenContainer style={styles.centered}>
         <Text style={styles.errorText}>Ошибка при загрузке способностей.</Text>
         <Text style={styles.linkText} onPress={() => refetch()}>
           Повторить запрос
         </Text>
-      </View>
+      </ScreenContainer>
     );
   }
 
@@ -63,19 +65,9 @@ export function FeatsList() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <TouchableOpacity
-        onPress={() => router.push('/(tabs)/library/feats/create')}
-        style={{
-          margin: 16,
-          paddingVertical: 10,
-          paddingHorizontal: 16,
-          borderRadius: 8,
-          alignItems: 'center',
-          backgroundColor: '#28a745',
-        }}
-      >
-        <Text style={{ color: '#fff', fontWeight: '600' }}>+ Создать способность (feat)</Text>
+    <ScreenContainer>
+      <TouchableOpacity onPress={() => router.push('/(tabs)/library/feats/create')} style={styles.createButton}>
+        <Text style={styles.createButtonText}>+ Создать способность (feat)</Text>
       </TouchableOpacity>
 
       {feats.length === 0 ? (
@@ -91,62 +83,72 @@ export function FeatsList() {
           contentContainerStyle={styles.listContainer}
         />
       )}
-    </SafeAreaView>
+    </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
   listContainer: {
     padding: 16,
   },
   centered: {
-    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     padding: 24,
+    rowGap: 12,
   },
   helperText: {
     marginTop: 8,
     fontSize: 16,
+    color: colors.textSecondary,
   },
   errorText: {
-    color: 'red',
+    color: colors.error,
     fontSize: 16,
     marginBottom: 12,
     textAlign: 'center',
   },
   linkText: {
-    color: '#2563eb',
+    color: colors.buttonPrimary,
     fontSize: 16,
   },
   separator: {
     height: 12,
   },
   card: {
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface,
     borderRadius: 8,
     padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   title: {
     fontSize: 18,
     fontWeight: 'bold',
     marginBottom: 6,
+    color: colors.textPrimary,
   },
   meta: {
     fontSize: 14,
-    color: '#374151',
+    color: colors.textSecondary,
     marginBottom: 4,
   },
   description: {
     fontSize: 14,
-    color: '#111827',
+    color: colors.textMuted,
+  },
+  createButton: {
+    margin: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    backgroundColor: colors.buttonPrimary,
+    borderWidth: 1,
+    borderColor: colors.buttonPrimaryHover,
+  },
+  createButtonText: {
+    color: colors.buttonPrimaryText,
+    fontWeight: '600',
   },
 });

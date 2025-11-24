@@ -1,5 +1,6 @@
 import React from 'react';
-import { ScrollView, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { colors } from '@/shared/theme/colors';
 
 interface FormScreenLayoutProps {
   title: string;
@@ -13,20 +14,35 @@ export const FormScreenLayout: React.FC<FormScreenLayoutProps> = ({
   children,
 }) => {
   return (
-    <ScrollView
-      contentContainerStyle={{
-        padding: 16,
-        gap: 16,
-      }}
-    >
-      <View>
-        <Text style={{ fontSize: 22, fontWeight: 'bold' }}>{title}</Text>
-        {subtitle ? (
-          <Text style={{ fontSize: 14, color: '#666', marginTop: 4 }}>{subtitle}</Text>
-        ) : null}
+    <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <View style={styles.header}>
+        <Text style={styles.title}>{title}</Text>
+        {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
       </View>
 
-      <View style={{ gap: 12 }}>{children}</View>
+      <View style={styles.body}>{children}</View>
     </ScrollView>
   );
 };
+
+const styles = StyleSheet.create({
+  content: {
+    paddingBottom: 24,
+    rowGap: 16,
+  },
+  header: {
+    rowGap: 4,
+  },
+  title: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: colors.textPrimary,
+  },
+  subtitle: {
+    fontSize: 14,
+    color: colors.textSecondary,
+  },
+  body: {
+    rowGap: 12,
+  },
+});
