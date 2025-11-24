@@ -1,5 +1,6 @@
 import React from 'react';
-import { ActivityIndicator, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 
 import { getSpellById } from '@/features/spells/api/getSpellById';
@@ -9,6 +10,7 @@ interface SpellDetailsProps {
 }
 
 export function SpellDetails({ spellId }: SpellDetailsProps) {
+  const router = useRouter();
   const { data: spell, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['spells', spellId],
     queryFn: () => getSpellById(spellId),
@@ -87,6 +89,26 @@ export function SpellDetails({ spellId }: SpellDetailsProps) {
           Уровень {spell.level}, школа: {spell.school}
         </Text>
       </View>
+
+      <TouchableOpacity
+        onPress={() =>
+          router.push({
+            pathname: '/(tabs)/library/spells/[spellId]/edit',
+            params: { spellId: spell.spell_id },
+          })
+        }
+        style={{
+          marginTop: 12,
+          marginBottom: 4,
+          alignSelf: 'flex-start',
+          paddingVertical: 6,
+          paddingHorizontal: 12,
+          borderRadius: 6,
+          backgroundColor: '#007bff',
+        }}
+      >
+        <Text style={{ color: '#fff', fontWeight: '500' }}>Редактировать</Text>
+      </TouchableOpacity>
 
       <View style={{ backgroundColor: '#f9fafb', padding: 12, borderRadius: 8, gap: 6 }}>
         <Text>
