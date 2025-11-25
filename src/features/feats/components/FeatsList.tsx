@@ -1,7 +1,7 @@
 import React from 'react';
 import { ActivityIndicator, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
-import { useRouter } from 'expo-router';
+import { Link, useRouter } from 'expo-router';
 
 import { getFeats } from '@/features/feats/api/getFeats';
 import type { Feat } from '@/features/feats/api/types';
@@ -48,19 +48,24 @@ export function FeatsList() {
       .join(', ');
 
     return (
-      <TouchableOpacity style={styles.card}>
-        <Text style={styles.title}>
-          {item.name}
-          {item.caster ? ' (кастер)' : ''}
-        </Text>
-        <Text style={styles.meta}>Требуемые доспехи: {armorText}</Text>
-        <Text style={styles.meta}>
-          Требуемые статы: {requiredStats || 'нет'}
-        </Text>
-        <Text numberOfLines={3} style={styles.description}>
-          {item.description}
-        </Text>
-      </TouchableOpacity>
+      <Link
+        href={{ pathname: '/(tabs)/library/feats/[featId]/edit', params: { featId: item.feat_id } }}
+        asChild
+      >
+        <TouchableOpacity style={styles.card}>
+          <Text style={styles.title}>
+            {item.name}
+            {item.caster ? ' (кастер)' : ''}
+          </Text>
+          <Text style={styles.meta}>Требуемые доспехи: {armorText}</Text>
+          <Text style={styles.meta}>
+            Требуемые статы: {requiredStats || 'нет'}
+          </Text>
+          <Text numberOfLines={3} style={styles.description}>
+            {item.description}
+          </Text>
+        </TouchableOpacity>
+      </Link>
     );
   };
 

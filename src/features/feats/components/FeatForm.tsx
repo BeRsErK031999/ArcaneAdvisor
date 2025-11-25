@@ -5,14 +5,21 @@ import { StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { createFeat } from '@/features/feats/api/createFeat';
+import { updateFeat } from '@/features/feats/api/updateFeat';
 import { FeatCreateSchema, type FeatCreateInput } from '@/features/feats/api/types';
 import { FormErrorText } from '@/shared/forms/FormErrorText';
 import { FormScreenLayout } from '@/shared/forms/FormScreenLayout';
 import { FormSubmitButton } from '@/shared/forms/FormSubmitButton';
 import { colors } from '@/shared/theme/colors';
 
+type FeatFormMode = 'create' | 'edit';
+
 interface FeatFormProps {
+  mode?: FeatFormMode;
+  featId?: string;
+  initialValues?: FeatCreateInput;
   onSuccess?: () => void;
+  submitLabel?: string;
 }
 
 const defaultValues: FeatCreateInput = {
@@ -24,33 +31,83 @@ const defaultValues: FeatCreateInput = {
   increase_modifiers: [],
 };
 
-export const FeatForm: React.FC<FeatFormProps> = ({ onSuccess }) => {
+export const FeatForm: React.FC<FeatFormProps> = ({
+  mode = 'create',
+  featId,
+  initialValues,
+  onSuccess,
+  submitLabel,
+}) => {
   const queryClient = useQueryClient();
+
+  const formDefaultValues = initialValues ?? defaultValues;
+
   const {
     control,
     handleSubmit,
-    formState: { errors, isSubmitting },
     reset,
+    formState: { errors },
   } = useForm<FeatCreateInput>({
     resolver: zodResolver(FeatCreateSchema),
-    defaultValues,
+    defaultValues: formDefaultValues,
   });
 
-  const [submitError, setSubmitError] = React.useState<string | null>(null);
-  const [rawRequiredArmors, setRawRequiredArmors] = React.useState('');
-  const [requiredModifiersNames, setRequiredModifiersNames] = React.useState('');
-  const [requiredMinValue, setRequiredMinValue] = React.useState('');
-  const [increaseModifiers, setIncreaseModifiers] = React.useState('');
+  React.useEffect(() => {
+    if (initialValues) {
+      reset(initialValues);
+    }
+  }, [initialValues, reset]);
 
-  const { mutateAsync } = useMutation({
+  const [submitError, setSubmitError] = React.useState<string | null>(null);
+  const [rawRequiredArmors, setRawRequiredArmors] = React.useState(
+    initialValues?.required_armor_types.join(', ') ?? '',
+  );
+  const [requiredModifiersNames, setRequiredModifiersNames] = React.useState(
+    initialValues?.required_modifiers.map((modifier) => modifier.modifier).join(', ') ?? '',
+  );
+  const [requiredMinValue, setRequiredMinValue] = React.useState(
+    initialValues?.required_modifiers[0]?.min_value?.toString() ?? '',
+  );
+  const [increaseModifiers, setIncreaseModifiers] = React.useState(
+    initialValues?.increase_modifiers.join(', ') ?? '',
+  );
+
+  React.useEffect(() => {
+    if (initialValues) {
+      setRawRequiredArmors(initialValues.required_armor_types.join(', '));
+      setRequiredModifiersNames(initialValues.required_modifiers.map((m) => m.modifier).join(', '));
+      setRequiredMinValue(initialValues.required_modifiers[0]?.min_value?.toString() ?? '');
+      setIncreaseModifiers(initialValues.increase_modifiers.join(', '));
+    }
+  }, [initialValues]);
+
+  const createMutation = useMutation({
     mutationFn: createFeat,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['feats'] });
     },
   });
 
+  const updateMutation = useMutation({
+    mutationFn: (values: FeatCreateInput) => {
+      if (!featId) {
+        throw new Error('featId is required for update');
+      }
+      return updateFeat(featId, values);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['feats'] });
+      if (featId) {
+        queryClient.invalidateQueries({ queryKey: ['feats', featId] });
+      }
+    },
+  });
+
+  const isSubmitting = createMutation.isPending || updateMutation.isPending;
+
   const onSubmit = async (values: FeatCreateInput) => {
     setSubmitError(null);
+
     const armorTypes = (rawRequiredArmors ?? '')
       .split(',')
       .map((s) => s.trim())
@@ -67,30 +124,44 @@ export const FeatForm: React.FC<FeatFormProps> = ({ onSuccess }) => {
       .map((m) => m.trim())
       .filter(Boolean);
 
-    values.required_armor_types = armorTypes;
-    values.required_modifiers = modifiers;
-    values.increase_modifiers = increased;
+    const payload: FeatCreateInput = {
+      ...values,
+      required_armor_types: armorTypes,
+      required_modifiers: modifiers,
+      increase_modifiers: increased,
+    };
 
     try {
-      await mutateAsync(values);
-      if (onSuccess) {
-        onSuccess();
+      if (mode === 'edit') {
+        await updateMutation.mutateAsync(payload);
       } else {
+        await createMutation.mutateAsync(payload);
         reset(defaultValues);
         setRawRequiredArmors('');
         setRequiredModifiersNames('');
         setRequiredMinValue('');
         setIncreaseModifiers('');
       }
+
+      onSuccess?.();
     } catch (error) {
-      console.error('Create feat error:', error);
-      setSubmitError('Не удалось сохранить способность. Попробуйте ещё раз.');
+      console.error('Feat form submit error:', error);
+      setSubmitError(
+        mode === 'edit'
+          ? 'Не удалось сохранить изменения способности. Попробуйте ещё раз.'
+          : 'Не удалось сохранить способность. Попробуйте ещё раз.',
+      );
     }
   };
 
+  const finalLabel = submitLabel ?? (mode === 'edit' ? 'Сохранить изменения' : 'Сохранить способность');
+  const formTitle = mode === 'edit' ? 'Редактировать способность (feat)' : 'Создать способность (feat)';
+
   return (
-    <FormScreenLayout title="Создать способность (feat)">
-      {submitError ? <Text style={styles.errorText}>{submitError}</Text> : null}
+    <FormScreenLayout title={formTitle}>
+      {submitError ? (
+        <Text style={{ color: colors.error, marginBottom: 8 }}>{submitError}</Text>
+      ) : null}
 
       <View style={styles.field}>
         <Text style={styles.label}>Название</Text>
@@ -193,21 +264,12 @@ export const FeatForm: React.FC<FeatFormProps> = ({ onSuccess }) => {
         <FormErrorText>{errors.increase_modifiers?.message}</FormErrorText>
       </View>
 
-      <FormSubmitButton
-        title="Создать способность"
-        isSubmitting={isSubmitting}
-        onPress={handleSubmit(onSubmit)}
-      />
+      <FormSubmitButton title={finalLabel} isSubmitting={isSubmitting} onPress={handleSubmit(onSubmit)} />
     </FormScreenLayout>
   );
 };
 
 const styles = StyleSheet.create({
-  errorText: {
-    color: colors.error,
-    marginBottom: 8,
-    fontWeight: '600',
-  },
   field: {
     gap: 4,
   },
