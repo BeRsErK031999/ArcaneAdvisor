@@ -5,14 +5,21 @@ import { StyleSheet, Text, TextInput, View } from 'react-native';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { createSubclass } from '@/features/subclasses/api/createSubclass';
+import { updateSubclass } from '@/features/subclasses/api/updateSubclass';
 import { SubclassCreateSchema, type SubclassCreateInput } from '@/features/subclasses/api/types';
 import { FormErrorText } from '@/shared/forms/FormErrorText';
 import { FormScreenLayout } from '@/shared/forms/FormScreenLayout';
 import { FormSubmitButton } from '@/shared/forms/FormSubmitButton';
 import { colors } from '@/shared/theme/colors';
 
+type SubclassFormMode = 'create' | 'edit';
+
 interface SubclassFormProps {
+  mode?: SubclassFormMode;
+  subclassId?: string;
+  initialValues?: SubclassCreateInput;
   onSuccess?: () => void;
+  submitLabel?: string;
 }
 
 const defaultValues: SubclassCreateInput = {
@@ -22,44 +29,84 @@ const defaultValues: SubclassCreateInput = {
   name_in_english: '',
 };
 
-export const SubclassForm: React.FC<SubclassFormProps> = ({ onSuccess }) => {
+export const SubclassForm: React.FC<SubclassFormProps> = ({
+  mode = 'create',
+  subclassId,
+  initialValues,
+  onSuccess,
+  submitLabel,
+}) => {
   const queryClient = useQueryClient();
+
+  const formDefaultValues = initialValues ?? defaultValues;
+
   const {
     control,
     handleSubmit,
-    formState: { errors, isSubmitting },
+    formState: { errors },
     reset,
   } = useForm<SubclassCreateInput>({
     resolver: zodResolver(SubclassCreateSchema),
-    defaultValues,
+    defaultValues: formDefaultValues,
   });
+
+  React.useEffect(() => {
+    if (initialValues) {
+      reset(initialValues);
+    }
+  }, [initialValues, reset]);
 
   const [submitError, setSubmitError] = React.useState<string | null>(null);
 
-  const { mutateAsync } = useMutation({
+  const createMutation = useMutation({
     mutationFn: createSubclass,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['subclasses'] });
     },
   });
 
+  const updateMutation = useMutation({
+    mutationFn: (values: SubclassCreateInput) => {
+      if (!subclassId) throw new Error('subclassId is required for update');
+      return updateSubclass(subclassId, values);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['subclasses'] });
+      if (subclassId) {
+        queryClient.invalidateQueries({ queryKey: ['subclasses', subclassId] });
+      }
+    },
+  });
+
+  const isSubmitting = createMutation.isPending || updateMutation.isPending;
+
   const onSubmit = async (values: SubclassCreateInput) => {
     setSubmitError(null);
+
     try {
-      await mutateAsync(values);
-      if (onSuccess) {
-        onSuccess();
+      if (mode === 'edit') {
+        await updateMutation.mutateAsync(values);
       } else {
+        await createMutation.mutateAsync(values);
         reset(defaultValues);
       }
+
+      onSuccess?.();
     } catch (error) {
-      console.error('Failed to create subclass:', error);
-      setSubmitError('Не удалось создать подкласс. Попробуйте ещё раз.');
+      console.error('Failed to submit subclass form:', error);
+      setSubmitError(
+        mode === 'edit'
+          ? 'Не удалось сохранить изменения подкласса. Попробуйте ещё раз.'
+          : 'Не удалось создать подкласс. Попробуйте ещё раз.',
+      );
     }
   };
 
+  const finalSubmitLabel = submitLabel ?? (mode === 'edit' ? 'Сохранить изменения' : 'Создать подкласс');
+  const formTitle = mode === 'edit' ? 'Редактировать подкласс' : 'Создать подкласс';
+
   return (
-    <FormScreenLayout title="Создать подкласс">
+    <FormScreenLayout title={formTitle}>
       {submitError ? <Text style={styles.errorText}>{submitError}</Text> : null}
 
       <View style={styles.field}>
@@ -139,11 +186,7 @@ export const SubclassForm: React.FC<SubclassFormProps> = ({ onSuccess }) => {
         <FormErrorText>{errors.description?.message}</FormErrorText>
       </View>
 
-      <FormSubmitButton
-        title="Создать подкласс"
-        isSubmitting={isSubmitting}
-        onPress={handleSubmit(onSubmit)}
-      />
+      <FormSubmitButton title={finalSubmitLabel} isSubmitting={isSubmitting} onPress={handleSubmit(onSubmit)} />
     </FormScreenLayout>
   );
 };

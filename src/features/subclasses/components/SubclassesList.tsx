@@ -1,6 +1,6 @@
 import React from 'react';
 import { ActivityIndicator, FlatList, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { Link, useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 
 import { getSubclasses } from '@/features/subclasses/api/getSubclasses';
@@ -56,14 +56,22 @@ export function SubclassesList() {
   }
 
   const renderItem = ({ item }: { item: Subclass }) => (
-    <TouchableOpacity style={styles.card}>
-      <Text style={styles.title}>{item.name}</Text>
-      <Text style={styles.subtitle}>{item.name_in_english}</Text>
-      <Text style={styles.meta}>Класс: {item.class_id}</Text>
-      <Text numberOfLines={3} style={styles.description}>
-        {item.description}
-      </Text>
-    </TouchableOpacity>
+    <Link
+      href={{
+        pathname: '/(tabs)/library/subclasses/[subclassId]/edit',
+        params: { subclassId: item.subclass_id },
+      }}
+      asChild
+    >
+      <TouchableOpacity style={styles.card}>
+        <Text style={styles.title}>{item.name}</Text>
+        <Text style={styles.subtitle}>{item.name_in_english}</Text>
+        <Text style={styles.meta}>Класс: {item.class_id}</Text>
+        <Text numberOfLines={3} style={styles.description}>
+          {item.description}
+        </Text>
+      </TouchableOpacity>
+    </Link>
   );
 
   return (
