@@ -8,13 +8,20 @@ import {
   type RaceCreateInput,
 } from '@/features/races/api/types';
 import { createRace } from '@/features/races/api/createRace';
+import { updateRace } from '@/features/races/api/updateRace';
 import { FormErrorText } from '@/shared/forms/FormErrorText';
 import { FormScreenLayout } from '@/shared/forms/FormScreenLayout';
 import { FormSubmitButton } from '@/shared/forms/FormSubmitButton';
 import { colors } from '@/shared/theme/colors';
 
+type RaceFormMode = 'create' | 'edit';
+
 interface RaceFormProps {
+  mode?: RaceFormMode;
+  raceId?: string;
+  initialValues?: RaceCreateInput;
   onSuccess?: () => void;
+  submitLabel?: string;
 }
 
 const defaultValues: RaceCreateInput = {
@@ -31,70 +38,123 @@ const defaultValues: RaceCreateInput = {
     description: '',
   },
   increase_modifiers: [],
-  source_id: '00000000-0000-0000-0000-000000000000',
+  source_id: '',
   features: [],
   name_in_english: '',
 };
 
-export const RaceForm: React.FC<RaceFormProps> = ({ onSuccess }) => {
+export const RaceForm: React.FC<RaceFormProps> = ({
+  mode = 'create',
+  raceId,
+  initialValues,
+  onSuccess,
+  submitLabel,
+}) => {
   const queryClient = useQueryClient();
+  const formDefaultValues = initialValues ?? defaultValues;
+
   const {
     control,
     handleSubmit,
-    formState: { errors, isSubmitting },
+    formState: { errors },
     reset,
   } = useForm<RaceCreateInput>({
     resolver: zodResolver(RaceCreateSchema),
-    defaultValues,
+    defaultValues: formDefaultValues,
   });
 
   const [submitError, setSubmitError] = React.useState<string | null>(null);
   const [abilityBonuses, setAbilityBonuses] = React.useState('');
 
-  const { mutateAsync } = useMutation({
+  React.useEffect(() => {
+    if (initialValues) {
+      reset(initialValues);
+      if (initialValues.increase_modifiers?.length) {
+        const bonusesText = initialValues.increase_modifiers
+          .map(
+            (modifier) => `${modifier.modifier}:${modifier.bonus >= 0 ? '+' : ''}${modifier.bonus}`,
+          )
+          .join(', ');
+        setAbilityBonuses(bonusesText);
+      } else {
+        setAbilityBonuses('');
+      }
+    }
+  }, [initialValues, reset]);
+
+  const createMutation = useMutation({
     mutationFn: createRace,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['races'] });
     },
   });
 
+  const updateMutation = useMutation({
+    mutationFn: (values: RaceCreateInput) => {
+      if (!raceId) {
+        throw new Error('raceId is required for update');
+      }
+      return updateRace(raceId, values);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['races'] });
+      if (raceId) {
+        queryClient.invalidateQueries({ queryKey: ['races', raceId] });
+      }
+    },
+  });
+
+  const isSubmitting = createMutation.isPending || updateMutation.isPending;
+
   const onSubmit = async (values: RaceCreateInput) => {
+    setSubmitError(null);
+
     try {
-      setSubmitError(null);
-      const parsedModifiers = abilityBonuses
-        .split(',')
-        .map((raw) => {
-          const [modifier, bonusRaw] = raw.split(':').map((item) => item.trim());
-          const bonus = Number.parseInt(bonusRaw ?? '', 10);
+      const parsedModifiers = abilityBonuses.trim()
+        ? (abilityBonuses
+            .split(',')
+            .map((raw) => {
+              const [modifier, bonusRaw] = raw.split(':').map((item) => item.trim());
+              const bonus = Number.parseInt(bonusRaw ?? '', 10);
 
-          if (!modifier || Number.isNaN(bonus)) {
-            return null;
-          }
+              if (!modifier || Number.isNaN(bonus)) {
+                return null;
+              }
 
-          return { modifier, bonus };
-        })
-        .filter(Boolean) as RaceCreateInput['increase_modifiers'];
+              return { modifier, bonus };
+            })
+            .filter(Boolean) as RaceCreateInput['increase_modifiers'])
+        : values.increase_modifiers;
 
       const payload: RaceCreateInput = {
         ...values,
         increase_modifiers: parsedModifiers,
       };
 
-      await mutateAsync(payload);
-      if (onSuccess) {
-        onSuccess();
+      if (mode === 'edit') {
+        await updateMutation.mutateAsync(payload);
       } else {
+        await createMutation.mutateAsync(payload);
         reset(defaultValues);
         setAbilityBonuses('');
       }
-    } catch (e) {
-      console.error('Failed to create race', e);
-      setSubmitError('Не удалось сохранить расу. Попробуйте ещё раз.');
+
+      onSuccess?.();
+    } catch (error) {
+      console.error('Race form submit error:', error);
+      setSubmitError(
+        mode === 'edit'
+          ? 'Не удалось сохранить изменения расы. Попробуйте ещё раз.'
+          : 'Не удалось сохранить расу. Попробуйте ещё раз.',
+      );
     }
   };
 
+  const finalLabel = submitLabel ?? (mode === 'edit' ? 'Сохранить изменения' : 'Сохранить расу');
+  const title = mode === 'edit' ? 'Редактировать расу' : 'Создать расу';
+
   return (
-    <FormScreenLayout title="Создать расу">
+    <FormScreenLayout title={title}>
       {submitError ? <Text style={styles.errorText}>{submitError}</Text> : null}
 
       <View style={styles.field}>
@@ -335,11 +395,7 @@ export const RaceForm: React.FC<RaceFormProps> = ({ onSuccess }) => {
 
       {/* TODO: добавить форму для особенностей */}
 
-      <FormSubmitButton
-        title="Сохранить расу"
-        isSubmitting={isSubmitting}
-        onPress={handleSubmit(onSubmit)}
-      />
+      <FormSubmitButton title={finalLabel} isSubmitting={isSubmitting} onPress={handleSubmit(onSubmit)} />
     </FormScreenLayout>
   );
 };
