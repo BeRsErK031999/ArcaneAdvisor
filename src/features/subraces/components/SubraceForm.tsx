@@ -5,14 +5,21 @@ import { StyleSheet, Text, TextInput, View } from 'react-native';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { createSubrace } from '@/features/subraces/api/createSubrace';
+import { updateSubrace } from '@/features/subraces/api/updateSubrace';
 import { SubraceCreateSchema, type SubraceCreateInput } from '@/features/subraces/api/types';
 import { FormErrorText } from '@/shared/forms/FormErrorText';
 import { FormScreenLayout } from '@/shared/forms/FormScreenLayout';
 import { FormSubmitButton } from '@/shared/forms/FormSubmitButton';
 import { colors } from '@/shared/theme/colors';
 
+type SubraceFormMode = 'create' | 'edit';
+
 interface SubraceFormProps {
+  mode?: SubraceFormMode;
+  subraceId?: string;
+  initialValues?: SubraceCreateInput;
   onSuccess?: () => void;
+  submitLabel?: string;
 }
 
 const defaultValues: SubraceCreateInput = {
@@ -24,66 +31,117 @@ const defaultValues: SubraceCreateInput = {
   features: [],
 };
 
-export const SubraceForm: React.FC<SubraceFormProps> = ({ onSuccess }) => {
+export const SubraceForm: React.FC<SubraceFormProps> = ({
+  mode = 'create',
+  subraceId,
+  initialValues,
+  onSuccess,
+  submitLabel,
+}) => {
   const queryClient = useQueryClient();
+  const formDefaultValues = initialValues ?? defaultValues;
   const {
     control,
     handleSubmit,
-    formState: { errors, isSubmitting },
+    formState: { errors },
     reset,
   } = useForm<SubraceCreateInput>({
     resolver: zodResolver(SubraceCreateSchema),
-    defaultValues,
+    defaultValues: formDefaultValues,
   });
 
   const [submitError, setSubmitError] = React.useState<string | null>(null);
   const [abilityBonuses, setAbilityBonuses] = React.useState('');
 
-  const { mutateAsync } = useMutation({
+  React.useEffect(() => {
+    if (initialValues) {
+      reset(initialValues);
+      if (initialValues.increase_modifiers?.length) {
+        const bonusesText = initialValues.increase_modifiers
+          .map(
+            (modifier) => `${modifier.modifier}:${modifier.bonus >= 0 ? '+' : ''}${modifier.bonus}`,
+          )
+          .join(', ');
+        setAbilityBonuses(bonusesText);
+      } else {
+        setAbilityBonuses('');
+      }
+    }
+  }, [initialValues, reset]);
+
+  const createMutation = useMutation({
     mutationFn: createSubrace,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['subraces'] });
     },
   });
 
+  const updateMutation = useMutation({
+    mutationFn: (values: SubraceCreateInput) => {
+      if (!subraceId) {
+        throw new Error('subraceId is required for update');
+      }
+      return updateSubrace(subraceId, values);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['subraces'] });
+      if (subraceId) {
+        queryClient.invalidateQueries({ queryKey: ['subraces', subraceId] });
+      }
+    },
+  });
+
+  const isSubmitting = createMutation.isPending || updateMutation.isPending;
+
   const onSubmit = async (values: SubraceCreateInput) => {
     try {
       setSubmitError(null);
 
-      const parsedModifiers = abilityBonuses
-        .split(',')
-        .map((raw) => {
-          const [modifier, bonusRaw] = raw.split(':').map((item) => item.trim());
-          const bonus = Number.parseInt(bonusRaw ?? '', 10);
+      const parsedModifiers = abilityBonuses.trim()
+        ? (abilityBonuses
+            .split(',')
+            .map((raw) => {
+              const [modifier, bonusRaw] = raw.split(':').map((item) => item.trim());
+              const bonus = Number.parseInt(bonusRaw ?? '', 10);
 
-          if (!modifier || Number.isNaN(bonus)) {
-            return null;
-          }
+              if (!modifier || Number.isNaN(bonus)) {
+                return null;
+              }
 
-          return { modifier, bonus } as SubraceCreateInput['increase_modifiers'][number];
-        })
-        .filter(Boolean) as SubraceCreateInput['increase_modifiers'];
+              return { modifier, bonus } as SubraceCreateInput['increase_modifiers'][number];
+            })
+            .filter(Boolean) as SubraceCreateInput['increase_modifiers'])
+        : values.increase_modifiers;
 
       const payload: SubraceCreateInput = {
         ...values,
         increase_modifiers: parsedModifiers,
       };
 
-      await mutateAsync(payload);
-      if (onSuccess) {
-        onSuccess();
+      if (mode === 'edit') {
+        await updateMutation.mutateAsync(payload);
       } else {
+        await createMutation.mutateAsync(payload);
         reset(defaultValues);
         setAbilityBonuses('');
       }
+
+      onSuccess?.();
     } catch (e) {
       console.error('Failed to create subrace', e);
-      setSubmitError('Не удалось сохранить подрасу. Попробуйте ещё раз.');
+      setSubmitError(
+        mode === 'edit'
+          ? 'Не удалось сохранить изменения подрасы. Попробуйте ещё раз.'
+          : 'Не удалось сохранить подрасу. Попробуйте ещё раз.',
+      );
     }
   };
 
+  const title = mode === 'edit' ? 'Редактировать подрасу' : 'Создать подрасу';
+  const finalLabel = submitLabel ?? (mode === 'edit' ? 'Сохранить изменения' : 'Сохранить подрасу');
+
   return (
-    <FormScreenLayout title="Создать подрасу">
+    <FormScreenLayout title={title}>
       {submitError ? <Text style={styles.errorText}>{submitError}</Text> : null}
 
       <View style={styles.field}>
@@ -178,7 +236,7 @@ export const SubraceForm: React.FC<SubraceFormProps> = ({ onSuccess }) => {
       </View>
 
       <FormSubmitButton
-        title="Сохранить подрасу"
+        title={finalLabel}
         isSubmitting={isSubmitting}
         onPress={handleSubmit(onSubmit)}
       />

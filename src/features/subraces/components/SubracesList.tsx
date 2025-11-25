@@ -1,7 +1,7 @@
 import React from 'react';
 import { ActivityIndicator, FlatList, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
-import { useRouter } from 'expo-router';
+import { Link, useRouter } from 'expo-router';
 
 import { getSubraces } from '@/features/subraces/api/getSubraces';
 import type { Subrace } from '@/features/subraces/api/types';
@@ -65,15 +65,23 @@ export function SubracesList() {
       .join(', ');
 
     return (
-      <TouchableOpacity style={styles.card}>
-        <Text style={styles.title}>{item.name}</Text>
-        <Text style={styles.subtitle}>{item.name_in_english}</Text>
-        <Text style={styles.meta}>Раса: {item.race_id}</Text>
-        {bonuses ? <Text style={styles.meta}>Бонусы: {bonuses}</Text> : null}
-        <Text numberOfLines={2} style={styles.description}>
-          {item.description}
-        </Text>
-      </TouchableOpacity>
+      <Link
+        href={{
+          pathname: '/(tabs)/library/subraces/[subraceId]/edit',
+          params: { subraceId: item.subrace_id },
+        }}
+        asChild
+      >
+        <TouchableOpacity style={styles.card}>
+          <Text style={styles.title}>{item.name}</Text>
+          <Text style={styles.subtitle}>{item.name_in_english}</Text>
+          <Text style={styles.meta}>Раса: {item.race_id}</Text>
+          {bonuses ? <Text style={styles.meta}>Бонусы: {bonuses}</Text> : null}
+          <Text numberOfLines={2} style={styles.description}>
+            {item.description}
+          </Text>
+        </TouchableOpacity>
+      </Link>
     );
   };
 
