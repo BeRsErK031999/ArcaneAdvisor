@@ -8,13 +8,20 @@ import {
   type ClassCreateInput,
 } from '@/features/classes/api/types';
 import { createClass } from '@/features/classes/api/createClass';
+import { updateClass } from '@/features/classes/api/updateClass';
 import { FormErrorText } from '@/shared/forms/FormErrorText';
 import { FormScreenLayout } from '@/shared/forms/FormScreenLayout';
 import { FormSubmitButton } from '@/shared/forms/FormSubmitButton';
 import { colors } from '@/shared/theme/colors';
 
+type ClassFormMode = 'create' | 'edit';
+
 interface ClassFormProps {
+  mode?: ClassFormMode;
+  classId?: string;
+  initialValues?: ClassCreateInput;
   onSuccess?: () => void;
+  submitLabel?: string;
 }
 
 const defaultValues: ClassCreateInput = {
@@ -40,44 +47,86 @@ const defaultValues: ClassCreateInput = {
   source_id: '',
 };
 
-export const ClassForm: React.FC<ClassFormProps> = ({ onSuccess }) => {
+export const ClassForm: React.FC<ClassFormProps> = ({
+  mode = 'create',
+  classId,
+  initialValues,
+  onSuccess,
+  submitLabel,
+}) => {
   const queryClient = useQueryClient();
-  const {
-    control,
-    handleSubmit,
-    formState: { errors, isSubmitting },
-    reset,
-  } = useForm<ClassCreateInput>({
+  const formDefaultValues = initialValues ?? defaultValues;
+
+  const { control, handleSubmit, formState, reset } = useForm<ClassCreateInput>({
     resolver: zodResolver(ClassCreateSchema),
-    defaultValues,
+    defaultValues: formDefaultValues,
   });
 
+  const { errors } = formState;
   const [submitError, setSubmitError] = React.useState<string | null>(null);
 
-  const { mutateAsync } = useMutation({
+  React.useEffect(() => {
+    if (initialValues) {
+      reset(initialValues);
+    }
+  }, [initialValues, reset]);
+
+  const createMutation = useMutation({
     mutationFn: createClass,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['classes'] });
     },
   });
 
+  const updateMutation = useMutation({
+    mutationFn: (values: ClassCreateInput) => {
+      if (!classId) {
+        throw new Error('classId is required for update');
+      }
+      return updateClass(classId, values);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['classes'] });
+      if (classId) {
+        queryClient.invalidateQueries({ queryKey: ['classes', classId] });
+      }
+    },
+  });
+
+  const isSubmitting = createMutation.isPending || updateMutation.isPending;
+  const [formTitle, finalSubmitLabel] = React.useMemo(
+    () => [
+      mode === 'edit' ? 'Редактировать класс' : 'Создать класс',
+      submitLabel ?? (mode === 'edit' ? 'Сохранить изменения' : 'Сохранить класс'),
+    ],
+    [mode, submitLabel],
+  );
+
   const onSubmit = async (values: ClassCreateInput) => {
     setSubmitError(null);
     try {
-      await mutateAsync(values);
+      if (mode === 'edit') {
+        await updateMutation.mutateAsync(values);
+      } else {
+        await createMutation.mutateAsync(values);
+        reset();
+      }
+
       if (onSuccess) {
         onSuccess();
-      } else {
-        reset(defaultValues);
       }
     } catch (error) {
-      console.error('Create class error:', error);
-      setSubmitError('Не удалось сохранить класс. Попробуйте ещё раз.');
+      console.error('Class form submit error:', error);
+      setSubmitError(
+        mode === 'edit'
+          ? 'Не удалось сохранить изменения класса. Попробуйте ещё раз.'
+          : 'Не удалось сохранить класс. Попробуйте ещё раз.',
+      );
     }
   };
 
   return (
-    <FormScreenLayout title="Создать класс">
+    <FormScreenLayout title={formTitle}>
       {submitError ? <Text style={styles.errorText}>{submitError}</Text> : null}
 
       <View style={styles.field}>
@@ -151,8 +200,8 @@ export const ClassForm: React.FC<ClassFormProps> = ({ onSuccess }) => {
                   text
                     .split(',')
                     .map((mod) => mod.trim())
-                  .filter(Boolean),
-              )
+                    .filter(Boolean),
+                )
               }
               onBlur={onBlur}
               placeholder="strength, charisma"
@@ -382,7 +431,7 @@ export const ClassForm: React.FC<ClassFormProps> = ({ onSuccess }) => {
       </View>
 
       <FormSubmitButton
-        title="Сохранить класс"
+        title={finalSubmitLabel}
         isSubmitting={isSubmitting}
         onPress={handleSubmit(onSubmit)}
       />

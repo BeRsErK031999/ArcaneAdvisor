@@ -1,14 +1,17 @@
 import React from 'react';
-import { ActivityIndicator, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, ScrollView, Text, View, TouchableOpacity } from 'react-native';
+import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { getClassById } from '@/features/classes/api/getClassById';
 import type { Class } from '@/features/classes/api/types';
+import { colors } from '@/shared/theme/colors';
 
 interface ClassDetailsProps {
   classId: string;
 }
 
 export const ClassDetails: React.FC<ClassDetailsProps> = ({ classId }) => {
+  const router = useRouter();
   const {
     data: classData,
     isLoading,
@@ -66,6 +69,27 @@ export const ClassDetails: React.FC<ClassDetailsProps> = ({ classId }) => {
         <Text style={{ fontSize: 14, color: '#888', marginTop: 4 }}>
           {classData.name_in_english}
         </Text>
+        <TouchableOpacity
+          onPress={() =>
+            router.push({
+              pathname: '/(tabs)/library/classes/[classId]/edit',
+              params: { classId: classData.class_id },
+            })
+          }
+          style={{
+            marginTop: 12,
+            marginBottom: 8,
+            alignSelf: 'flex-start',
+            paddingVertical: 6,
+            paddingHorizontal: 12,
+            borderRadius: 9999,
+            backgroundColor: colors.buttonPrimary,
+          }}
+        >
+          <Text style={{ color: colors.buttonPrimaryText, fontWeight: '500' }}>
+            Редактировать
+          </Text>
+        </TouchableOpacity>
       </View>
 
       <View>
