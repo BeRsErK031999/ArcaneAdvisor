@@ -1,14 +1,17 @@
 import React from 'react';
-import { ActivityIndicator, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, ScrollView, Text, View, TouchableOpacity } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
+import { useRouter } from 'expo-router';
 import { getRaceById } from '@/features/races/api/getRaceById';
 import type { Race } from '@/features/races/api/types';
+import { colors } from '@/shared/theme/colors';
 
 interface RaceDetailsProps {
   raceId: string;
 }
 
 export const RaceDetails: React.FC<RaceDetailsProps> = ({ raceId }) => {
+  const router = useRouter();
   const {
     data: race,
     isLoading,
@@ -64,6 +67,26 @@ export const RaceDetails: React.FC<RaceDetailsProps> = ({ raceId }) => {
           {race.name_in_english}
         </Text>
       </View>
+
+      <TouchableOpacity
+        onPress={() =>
+          router.push({
+            pathname: '/(tabs)/library/races/[raceId]/edit',
+            params: { raceId: race.race_id },
+          })
+        }
+        style={{
+          marginTop: 12,
+          marginBottom: 8,
+          alignSelf: 'flex-start',
+          paddingVertical: 6,
+          paddingHorizontal: 12,
+          borderRadius: 9999,
+          backgroundColor: colors.buttonPrimary,
+        }}
+      >
+        <Text style={{ color: colors.buttonPrimaryText, fontWeight: '500' }}>Редактировать</Text>
+      </TouchableOpacity>
 
       <View>
         <Text style={{ fontWeight: '600' }}>Тип и размер:</Text>
