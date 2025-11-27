@@ -33,6 +33,8 @@ interface SpellFormProps {
   onSuccess?: () => void;
   submitLabel?: string;
   sources?: Source[];
+  showBackButton?: boolean;
+  onBackPress?: () => void;
 }
 
 const defaultValues: SpellCreateInput = {
@@ -68,6 +70,8 @@ export const SpellForm: React.FC<SpellFormProps> = ({
   onSuccess,
   submitLabel,
   sources,
+  showBackButton,
+  onBackPress,
 }) => {
   if (mode === "edit" && !spellId) {
     console.warn("SpellForm: spellId is required in edit mode");
@@ -158,7 +162,11 @@ export const SpellForm: React.FC<SpellFormProps> = ({
     (mode === "edit" ? "Сохранить изменения" : "Создать заклинание");
 
   return (
-    <FormScreenLayout title={formTitle}>
+    <FormScreenLayout
+      title={formTitle}
+      showBackButton={showBackButton}
+      onBackPress={onBackPress}
+    >
       {submitError ? <Text style={styles.errorText}>{submitError}</Text> : null}
 
       {/* Карточка формы */}
