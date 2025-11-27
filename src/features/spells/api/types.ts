@@ -1,17 +1,4 @@
-import { z } from 'zod';
-
-export const SPELL_SCHOOL_IDS = [
-  'abjuration',
-  'conjuration',
-  'divination',
-  'enchantment',
-  'evocation',
-  'illusion',
-  'necromancy',
-  'transmutation',
-] as const;
-
-export type SpellSchoolId = (typeof SPELL_SCHOOL_IDS)[number];
+import { z } from "zod";
 
 export interface SpellComponents {
   verbal: boolean;
@@ -55,7 +42,7 @@ export interface Spell {
   description: string;
   next_level_description: string;
   level: number;
-  school: SpellSchoolId;
+  school: string;
   damage_type: SpellDamageType | null;
   duration: SpellDuration | null;
   casting_time: GameTime;
@@ -105,7 +92,7 @@ export const SpellCreateSchema = z.object({
   description: z.string().min(1),
   next_level_description: z.string().default(''),
   level: z.number().int().min(0),
-  school: z.enum(SPELL_SCHOOL_IDS),
+  school: z.string().min(1, "Укажите школу заклинания"),
   damage_type: SpellDamageTypeSchema,
   duration: SpellDurationSchema,
   casting_time: GameTimeSchema,

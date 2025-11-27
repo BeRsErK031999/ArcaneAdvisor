@@ -5,8 +5,6 @@ import { useQuery } from "@tanstack/react-query";
 
 import { SpellForm } from "@/features/spells/components/SpellForm";
 import { NoSourcesForSpells } from "@/features/spells/components/NoSourcesForSpells";
-import { getSpellSchools } from "@/features/spells/api/getSpellSchools";
-import type { SpellSchoolId } from "@/features/spells/api/types";
 import { getSources } from "@/features/sources/api/getSources";
 import type { Source } from "@/features/sources/api/types";
 import { ScreenContainer } from "@/shared/ui/ScreenContainer";
@@ -27,18 +25,7 @@ export default function SpellCreateScreen() {
     queryFn: getSources,
   });
 
-  const {
-    data: schools,
-    isLoading: isLoadingSchools,
-    isError: isErrorSchools,
-    error: errorSchools,
-    refetch: refetchSchools,
-  } = useQuery<SpellSchoolId[], Error>({
-    queryKey: ["spellSchools"],
-    queryFn: getSpellSchools,
-  });
-
-  const isLoadingAll = isLoadingSources || isLoadingSchools;
+  const isLoadingAll = isLoadingSources;
 
   if (isLoadingAll) {
     return (
@@ -49,11 +36,10 @@ export default function SpellCreateScreen() {
     );
   }
 
-  if (isErrorSources || isErrorSchools) {
-    const combinedErrorMessage = errorSources?.message ?? errorSchools?.message;
+  if (isErrorSources) {
+    const combinedErrorMessage = errorSources?.message;
     const handleRetry = () => {
       refetchSources();
-      refetchSchools();
     };
 
     return (
@@ -72,30 +58,15 @@ export default function SpellCreateScreen() {
   }
 
   const hasSources = (sources ?? []).length > 0;
-  const hasSchools = (schools ?? []).length > 0;
 
   if (!hasSources) {
     return <NoSourcesForSpells />;
-  }
-
-  if (!hasSchools) {
-    return (
-      <ScreenContainer style={styles.centered}>
-        <BodyText style={styles.helperText}>
-          Не удалось загрузить список школ заклинаний.
-        </BodyText>
-        <Pressable style={styles.retryButton} onPress={() => refetchSchools()}>
-          <BodyText style={styles.retryButtonText}>Повторить</BodyText>
-        </Pressable>
-      </ScreenContainer>
-    );
   }
 
   return (
     <SpellForm
       mode="create"
       sources={sources}
-      schools={schools}
       submitLabel="Создать заклинание"
       showBackButton
       onSuccess={() => {

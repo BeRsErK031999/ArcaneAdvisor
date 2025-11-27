@@ -15,9 +15,8 @@ import { createSpell } from "@/features/spells/api/createSpell";
 import {
   SpellCreateSchema,
   type SpellCreateInput,
-  type SpellSchoolId,
-  SPELL_SCHOOL_IDS,
 } from "@/features/spells/api/types";
+import { useSpellSchools } from "@/features/spells/api/useSpellSchools";
 import { updateSpell } from "@/features/spells/api/updateSpell";
 import type { Source } from "@/features/sources/api/types";
 import { FormErrorText } from "@/shared/forms/FormErrorText";
@@ -35,7 +34,6 @@ interface SpellFormProps {
   onSuccess?: () => void;
   submitLabel?: string;
   sources?: Source[];
-  schools?: SpellSchoolId[];
   showBackButton?: boolean;
   onBackPress?: () => void;
 }
@@ -45,7 +43,7 @@ const defaultValues: SpellCreateInput = {
   description: "",
   next_level_description: "",
   level: 1,
-  school: SPELL_SCHOOL_IDS[0],
+  school: "",
   concentration: false,
   ritual: false,
   class_ids: [],
@@ -73,7 +71,6 @@ export const SpellForm: React.FC<SpellFormProps> = ({
   onSuccess,
   submitLabel,
   sources,
-  schools,
   showBackButton,
   onBackPress,
 }) => {
@@ -83,6 +80,14 @@ export const SpellForm: React.FC<SpellFormProps> = ({
 
   const queryClient = useQueryClient();
   const formDefaultValues = initialValues ?? defaultValues;
+
+  const {
+    schools,
+    isLoading: isLoadingSchools,
+    isError: isErrorSchools,
+    error: errorSchools,
+    refetch: refetchSchools,
+  } = useSpellSchools();
 
   const {
     control,
@@ -294,35 +299,63 @@ export const SpellForm: React.FC<SpellFormProps> = ({
                 name="school"
                 render={({ field: { value, onChange } }) => (
                   <View style={styles.schoolList}>
-                    {(schools ?? []).map((schoolId) => {
-                      const isSelected = value === schoolId;
+                    {isLoadingSchools && (
+                      <BodyText style={styles.schoolHelperText}>
+                        Загружаю школы заклинаний…
+                      </BodyText>
+                    )}
 
-                      return (
-                        <Pressable
-                          key={schoolId}
-                          onPress={() => onChange(schoolId)}
-                          style={[
-                            styles.schoolItem,
-                            isSelected && styles.schoolItemSelected,
-                          ]}
-                        >
-                          <Text
-                            style={
-                              isSelected
-                                ? styles.schoolItemTextSelected
-                                : styles.schoolItemText
-                            }
-                          >
-                            {schoolId}
-                          </Text>
+                    {isErrorSchools && (
+                      <View style={styles.schoolErrorRow}>
+                        <BodyText style={styles.schoolErrorText}>
+                          Не удалось загрузить школы заклинаний
+                        </BodyText>
+                        {errorSchools?.message ? (
+                          <BodyText style={styles.schoolHelperText}>
+                            {errorSchools.message}
+                          </BodyText>
+                        ) : null}
+                        <Pressable onPress={() => refetchSchools()}>
+                          <BodyText style={styles.schoolRetryText}>
+                            Повторить
+                          </BodyText>
                         </Pressable>
-                      );
-                    })}
+                      </View>
+                    )}
 
-                    {(schools ?? []).length === 0 && (
-                      <Text style={styles.schoolEmptyText}>
-                        Список школ заклинаний не загружен.
-                      </Text>
+                    {!isLoadingSchools && !isErrorSchools && schools.length > 0 && (
+                      <>
+                        {schools.map((schoolId) => {
+                          const isSelected = value === schoolId;
+
+                          return (
+                            <Pressable
+                              key={schoolId}
+                              onPress={() => onChange(schoolId)}
+                              style={[
+                                styles.schoolItem,
+                                isSelected && styles.schoolItemSelected,
+                              ]}
+                            >
+                              <Text
+                                style={
+                                  isSelected
+                                    ? styles.schoolItemTextSelected
+                                    : styles.schoolItemText
+                                }
+                              >
+                                {schoolId}
+                              </Text>
+                            </Pressable>
+                          );
+                        })}
+                      </>
+                    )}
+
+                    {!isLoadingSchools && !isErrorSchools && schools.length === 0 && (
+                      <BodyText style={styles.schoolHelperText}>
+                        Пока нет заклинаний, от которых можно взять список школ.
+                      </BodyText>
                     )}
                   </View>
                 )}
@@ -951,8 +984,23 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     fontSize: 13,
   },
-  schoolEmptyText: {
-    color: colors.textMuted,
+  schoolHelperText: {
     fontSize: 13,
+    color: colors.textMuted,
+  },
+  schoolErrorRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  schoolErrorText: {
+    fontSize: 13,
+    color: colors.error,
+  },
+  schoolRetryText: {
+    fontSize: 13,
+    color: colors.buttonPrimary,
+    fontWeight: "500",
   },
 });
