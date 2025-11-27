@@ -11,14 +11,14 @@ export default function TabsLayout() {
 
   return (
     <Tabs
-      initialRouteName="library/index"
+      initialRouteName="library"
       screenOptions={{
         tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
         headerShown: false,
         tabBarButton: HapticTab,
       }}>
       <Tabs.Screen
-        name="library/index"
+        name="library"
         options={{
           title: 'Справочник',
           tabBarIcon: ({ color, size }) => (
