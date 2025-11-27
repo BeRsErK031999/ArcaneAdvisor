@@ -23,6 +23,8 @@ interface SourceFormProps {
   initialValues?: SourceCreateInput;
   onSuccess?: () => void;
   submitLabel?: string;
+  showBackButton?: boolean;
+  onBackPress?: () => void;
 }
 
 const defaultValues: SourceCreateInput = {
@@ -37,6 +39,8 @@ export const SourceForm: React.FC<SourceFormProps> = ({
   initialValues,
   onSuccess,
   submitLabel,
+  showBackButton,
+  onBackPress,
 }) => {
   const queryClient = useQueryClient();
   const [submitError, setSubmitError] = React.useState<string | null>(null);
@@ -108,7 +112,11 @@ export const SourceForm: React.FC<SourceFormProps> = ({
     submitLabel ?? (mode === "edit" ? "Сохранить изменения" : "Создать источник");
 
   return (
-    <FormScreenLayout title={formTitle}>
+    <FormScreenLayout
+      title={formTitle}
+      showBackButton={showBackButton}
+      onBackPress={onBackPress}
+    >
       {submitError ? <Text style={styles.errorText}>{submitError}</Text> : null}
 
       <View style={styles.formCard}>

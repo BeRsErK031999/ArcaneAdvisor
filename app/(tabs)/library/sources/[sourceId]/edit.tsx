@@ -73,6 +73,7 @@ export default function SourceEditScreen() {
       sourceId={sourceId}
       initialValues={initialValues}
       submitLabel="Сохранить изменения"
+      showBackButton
       onSuccess={() => {
         router.replace("/(tabs)/library/sources");
       }}

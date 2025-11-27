@@ -10,6 +10,7 @@ export default function SourceCreateScreen() {
     <SourceForm
       mode="create"
       submitLabel="Создать источник"
+      showBackButton
       onSuccess={() => {
         router.replace("/(tabs)/library/sources");
       }}

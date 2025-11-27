@@ -15,6 +15,7 @@ import type { Spell } from "@/features/spells/api/types";
 import { colors } from "@/shared/theme/colors";
 import { ScreenContainer } from "@/shared/ui/ScreenContainer";
 import { BodyText, TitleText } from "@/shared/ui/Typography";
+import { BackButton } from "@/shared/ui/BackButton";
 
 interface SpellDetailsProps {
   spellId: string;
@@ -108,18 +109,18 @@ export function SpellDetails({ spellId }: SpellDetailsProps) {
   return (
     <ScreenContainer>
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        {/* Заголовок + английское имя */}
-        <View style={styles.headerBlock}>
-          <TitleText>{spell.name}</TitleText>
-          {spell.name_in_english ? (
-            <BodyText style={styles.spellNameEn}>
-              {spell.name_in_english}
-            </BodyText>
-          ) : null}
-          <BodyText style={styles.spellMeta}>
-            Уровень {spell.level}, школа: {spell.school}
-          </BodyText>
+        <View style={styles.headerRow}>
+          <BackButton />
+          <TitleText style={styles.title}>{spell.name}</TitleText>
         </View>
+        {spell.name_in_english ? (
+          <BodyText style={styles.spellNameEn}>
+            {spell.name_in_english}
+          </BodyText>
+        ) : null}
+        <BodyText style={styles.spellMeta}>
+          Уровень {spell.level}, школа: {spell.school}
+        </BodyText>
 
         {/* Кнопка "Редактировать" */}
         <Pressable
@@ -256,8 +257,14 @@ const styles = StyleSheet.create({
     rowGap: 16,
   },
 
-  headerBlock: {
-    rowGap: 4,
+  headerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    columnGap: 8,
+  },
+  title: {
+    flex: 1,
+    marginBottom: 0,
   },
   spellNameEn: {
     color: colors.textSecondary,

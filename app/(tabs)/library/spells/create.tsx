@@ -58,6 +58,7 @@ export default function SpellCreateScreen() {
       mode="create"
       sources={sources}
       submitLabel="Создать заклинание"
+      showBackButton
       onSuccess={() => {
         router.replace("/(tabs)/library/spells");
       }}

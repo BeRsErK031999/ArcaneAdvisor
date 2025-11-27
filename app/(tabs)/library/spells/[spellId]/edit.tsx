@@ -97,6 +97,7 @@ export default function SpellEditScreen() {
       spellId={spellId}
       initialValues={initialValues}
       sources={sources}
+      showBackButton
       onSuccess={() => {
         router.replace({
           pathname: "/(tabs)/library/spells/[spellId]",
