@@ -1,12 +1,12 @@
-import React from 'react';
-import { ActivityIndicator, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useRouter } from 'expo-router';
+import React from 'react';
+import { ActivityIndicator, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 import { getFeats } from '@/features/feats/api/getFeats';
 import type { Feat } from '@/features/feats/api/types';
-import { ScreenContainer } from '@/shared/ui/ScreenContainer';
 import { colors } from '@/shared/theme/colors';
+import { ScreenContainer } from '@/shared/ui/ScreenContainer';
 
 export function FeatsList() {
   const router = useRouter();
@@ -125,7 +125,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     padding: 16,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.borderMuted,
   },
   title: {
     fontSize: 18,
@@ -150,7 +150,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: colors.buttonPrimary,
     borderWidth: 1,
-    borderColor: colors.buttonPrimaryHover,
+    borderColor: colors.buttonPrimary,
   },
   createButtonText: {
     color: colors.buttonPrimaryText,

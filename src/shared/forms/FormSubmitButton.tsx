@@ -1,6 +1,6 @@
+import { colors } from '@/shared/theme/colors';
 import React from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, ViewStyle } from 'react-native';
-import { colors } from '@/shared/theme/colors';
 
 interface FormSubmitButtonProps {
   title: string;
@@ -48,7 +48,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   buttonPressed: {
-    backgroundColor: colors.buttonPrimaryHover,
+    backgroundColor: colors.buttonPrimary,
   },
   buttonDisabled: {
     opacity: 0.6,

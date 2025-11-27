@@ -1,11 +1,11 @@
-import React from 'react';
-import { ActivityIndicator, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { useQuery } from '@tanstack/react-query';
-import { Link, useRouter } from 'expo-router';
 import { getRaces } from '@/features/races/api/getRaces';
 import type { Race } from '@/features/races/api/types';
-import { ScreenContainer } from '@/shared/ui/ScreenContainer';
 import { colors } from '@/shared/theme/colors';
+import { ScreenContainer } from '@/shared/ui/ScreenContainer';
+import { useQuery } from '@tanstack/react-query';
+import { Link, useRouter } from 'expo-router';
+import React from 'react';
+import { ActivityIndicator, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export const RacesList: React.FC = () => {
   const router = useRouter();
@@ -121,7 +121,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: colors.buttonPrimary,
     borderWidth: 1,
-    borderColor: colors.buttonPrimaryHover,
+    borderColor: colors.buttonPrimary,
   },
   createButtonText: {
     color: colors.buttonPrimaryText,
@@ -133,7 +133,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.borderMuted,
   },
   name: {
     fontWeight: 'bold',
