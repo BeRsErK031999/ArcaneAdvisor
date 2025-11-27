@@ -105,11 +105,10 @@ type SpellListItemProps = {
 };
 
 function SpellListItem({ spell }: SpellListItemProps) {
-  // Типизированный href — expo-router понимает, что это маршрут с [spellId]
-  const href: Href<"/(tabs)/library/spells/[spellId]"> = {
+  const href = {
     pathname: "/(tabs)/library/spells/[spellId]",
     params: { spellId: String(spell.spell_id) },
-  };
+  } satisfies Href;
 
   return (
     <Link href={href} asChild>
