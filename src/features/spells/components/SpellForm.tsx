@@ -1,5 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import React from "react";
 import { Controller, useForm } from "react-hook-form";
 import {
@@ -8,6 +8,7 @@ import {
   Text,
   TextInput,
   View,
+  Pressable,
 } from "react-native";
 
 import { createSpell } from "@/features/spells/api/createSpell";
@@ -16,6 +17,7 @@ import {
   type SpellCreateInput,
 } from "@/features/spells/api/types";
 import { updateSpell } from "@/features/spells/api/updateSpell";
+import { getSources } from "@/features/sources/api/getSources";
 import { FormErrorText } from "@/shared/forms/FormErrorText";
 import { FormScreenLayout } from "@/shared/forms/FormScreenLayout";
 import { FormSubmitButton } from "@/shared/forms/FormSubmitButton";
@@ -76,18 +78,35 @@ export const SpellForm: React.FC<SpellFormProps> = ({
     handleSubmit,
     formState: { errors },
     reset,
+    setValue,
+    watch,
   } = useForm<SpellCreateInput>({
     resolver: zodResolver(SpellCreateSchema),
     defaultValues: formDefaultValues,
   });
 
   const [submitError, setSubmitError] = React.useState<string | null>(null);
+  const sourcesQuery = useQuery({ queryKey: ["sources"], queryFn: getSources });
+  const currentSourceId = watch("source_id");
+  const currentDuration = watch("duration.game_time");
+  const currentSplash = watch("splash.splash");
 
   React.useEffect(() => {
     if (initialValues) {
       reset(initialValues);
     }
   }, [initialValues, reset]);
+
+  React.useEffect(() => {
+    if (
+      !initialValues &&
+      !currentSourceId &&
+      sourcesQuery.data &&
+      sourcesQuery.data.length > 0
+    ) {
+      setValue("source_id", sourcesQuery.data[0].source_id);
+    }
+  }, [currentSourceId, initialValues, setValue, sourcesQuery.data]);
 
   const createMutation = useMutation({
     mutationFn: createSpell,
@@ -196,6 +215,59 @@ export const SpellForm: React.FC<SpellFormProps> = ({
             <FormErrorText>{errors.name_in_english?.message}</FormErrorText>
           </View>
 
+          <View style={styles.field}>
+            <Text style={styles.label}>Источник</Text>
+            <Controller
+              control={control}
+              name="source_id"
+              render={({ field: { value, onChange } }) => (
+                <View style={styles.selectorContainer}>
+                  {sourcesQuery.isLoading ? (
+                    <Text style={styles.mutedText}>Загрузка источников...</Text>
+                  ) : null}
+
+                  {sourcesQuery.isError ? (
+                    <Text style={styles.errorText}>
+                      Не удалось загрузить источники
+                    </Text>
+                  ) : null}
+
+                  {!sourcesQuery.isLoading &&
+                  !sourcesQuery.isError &&
+                  sourcesQuery.data ? (
+                    <View style={styles.sourceList}>
+                      {sourcesQuery.data.map((source) => {
+                        const isSelected = value === source.source_id;
+                        return (
+                          <Pressable
+                            key={source.source_id}
+                            onPress={() => onChange(source.source_id)}
+                            style={[
+                              styles.sourceItem,
+                              isSelected && styles.sourceItemSelected,
+                            ]}
+                          >
+                            <Text style={styles.label}>{source.name}</Text>
+                            <Text style={styles.mutedText}>{source.name_in_english}</Text>
+                          </Pressable>
+                        );
+                      })}
+                    </View>
+                  ) : (
+                    <TextInput
+                      value={value}
+                      onChangeText={onChange}
+                      placeholder="UUID источника"
+                      style={styles.input}
+                      placeholderTextColor={colors.inputPlaceholder}
+                    />
+                  )}
+                </View>
+              )}
+            />
+            <FormErrorText>{errors.source_id?.message}</FormErrorText>
+          </View>
+
           {/* Уровень + Школа в одну строку на десктопе */}
           <View style={styles.row}>
             <View style={styles.column}>
@@ -206,7 +278,7 @@ export const SpellForm: React.FC<SpellFormProps> = ({
                 render={({ field: { value, onChange, onBlur } }) => (
                   <TextInput
                     value={value?.toString() ?? ""}
-                    onChangeText={(text) => onChange(Number(text))}
+                    onChangeText={(text) => onChange(Number(text) || 0)}
                     onBlur={onBlur}
                     keyboardType="numeric"
                     inputMode="numeric"
@@ -274,7 +346,7 @@ export const SpellForm: React.FC<SpellFormProps> = ({
                 render={({ field: { value, onChange, onBlur } }) => (
                   <TextInput
                     value={value?.toString() ?? ""}
-                    onChangeText={(text) => onChange(Number(text))}
+                    onChangeText={(text) => onChange(Number(text) || 0)}
                     onBlur={onBlur}
                     keyboardType="numeric"
                     inputMode="numeric"
@@ -319,7 +391,7 @@ export const SpellForm: React.FC<SpellFormProps> = ({
                 render={({ field: { value, onChange, onBlur } }) => (
                   <TextInput
                     value={value?.toString() ?? ""}
-                    onChangeText={(text) => onChange(Number(text))}
+                    onChangeText={(text) => onChange(Number(text) || 0)}
                     onBlur={onBlur}
                     keyboardType="numeric"
                     inputMode="numeric"
@@ -379,6 +451,161 @@ export const SpellForm: React.FC<SpellFormProps> = ({
               />
             </View>
             <FormErrorText>{errors.ritual?.message}</FormErrorText>
+          </View>
+        </View>
+
+        {/* Блок: Тип урона и длительность */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Тип урона и длительность</Text>
+
+          <View style={styles.field}>
+            <Text style={styles.label}>Тип урона (ключ)</Text>
+            <Controller
+              control={control}
+              name="damage_type.name"
+              render={({ field: { value, onChange, onBlur } }) => (
+                <TextInput
+                  value={value ?? ""}
+                  onChangeText={(text) => onChange(text.trim() === "" ? null : text)}
+                  onBlur={onBlur}
+                  placeholder="fire"
+                  style={styles.input}
+                  placeholderTextColor={colors.inputPlaceholder}
+                />
+              )}
+            />
+            <FormErrorText>{errors.damage_type?.name?.message}</FormErrorText>
+          </View>
+
+          <View style={styles.field}>
+            <View style={styles.switchRow}>
+              <Text style={styles.label}>Есть длительность</Text>
+              <Switch
+                value={!!currentDuration}
+                onValueChange={(enabled) => {
+                  if (enabled) {
+                    setValue(
+                      "duration.game_time",
+                      currentDuration ?? { count: 1, unit: "minute" },
+                    );
+                  } else {
+                    setValue("duration.game_time", null);
+                  }
+                }}
+              />
+            </View>
+            {currentDuration ? (
+              <View style={styles.row}>
+                <View style={styles.column}>
+                  <Controller
+                    control={control}
+                    name="duration.game_time.count"
+                    render={({ field: { value, onChange, onBlur } }) => (
+                      <TextInput
+                        value={value?.toString() ?? ""}
+                        onChangeText={(text) => onChange(Number(text) || 0)}
+                        onBlur={onBlur}
+                        keyboardType="numeric"
+                        inputMode="numeric"
+                        placeholder="10"
+                        style={styles.input}
+                        placeholderTextColor={colors.inputPlaceholder}
+                      />
+                    )}
+                  />
+                  <FormErrorText>
+                    {errors.duration?.game_time?.count?.message}
+                  </FormErrorText>
+                </View>
+                <View style={styles.column}>
+                  <Controller
+                    control={control}
+                    name="duration.game_time.unit"
+                    render={({ field: { value, onChange, onBlur } }) => (
+                      <TextInput
+                        value={value ?? ""}
+                        onChangeText={onChange}
+                        onBlur={onBlur}
+                        placeholder="minute"
+                        style={styles.input}
+                        placeholderTextColor={colors.inputPlaceholder}
+                      />
+                    )}
+                  />
+                  <FormErrorText>
+                    {errors.duration?.game_time?.unit?.message}
+                  </FormErrorText>
+                </View>
+              </View>
+            ) : null}
+          </View>
+        </View>
+
+        {/* Блок: Область и сплэш */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Дистанция эффекта</Text>
+          <View style={styles.field}>
+            <View style={styles.switchRow}>
+              <Text style={styles.label}>Есть область взрыва</Text>
+              <Switch
+                value={!!currentSplash}
+                onValueChange={(enabled) => {
+                  if (enabled) {
+                    setValue(
+                      "splash.splash",
+                      currentSplash ?? { count: 5, unit: "ft" },
+                    );
+                  } else {
+                    setValue("splash.splash", null);
+                  }
+                }}
+              />
+            </View>
+
+            {currentSplash ? (
+              <View style={styles.row}>
+                <View style={styles.column}>
+                  <Controller
+                    control={control}
+                    name="splash.splash.count"
+                    render={({ field: { value, onChange, onBlur } }) => (
+                      <TextInput
+                        value={value?.toString() ?? ""}
+                        onChangeText={(text) => onChange(Number(text) || 0)}
+                        onBlur={onBlur}
+                        keyboardType="numeric"
+                        inputMode="numeric"
+                        placeholder="20"
+                        style={styles.input}
+                        placeholderTextColor={colors.inputPlaceholder}
+                      />
+                    )}
+                  />
+                  <FormErrorText>
+                    {errors.splash?.splash?.count?.message}
+                  </FormErrorText>
+                </View>
+                <View style={styles.column}>
+                  <Controller
+                    control={control}
+                    name="splash.splash.unit"
+                    render={({ field: { value, onChange, onBlur } }) => (
+                      <TextInput
+                        value={value ?? ""}
+                        onChangeText={onChange}
+                        onBlur={onBlur}
+                        placeholder="ft"
+                        style={styles.input}
+                        placeholderTextColor={colors.inputPlaceholder}
+                      />
+                    )}
+                  />
+                  <FormErrorText>
+                    {errors.splash?.splash?.unit?.message}
+                  </FormErrorText>
+                </View>
+              </View>
+            ) : null}
           </View>
         </View>
 
@@ -455,7 +682,112 @@ export const SpellForm: React.FC<SpellFormProps> = ({
           </View>
         </View>
 
-        {/* TODO: блоки Привязки / Тип урона / Сейвы можно добавить позже */}
+        {/* Блок: Классы и сейвы */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Привязки</Text>
+
+          <View style={styles.field}>
+            <Text style={styles.label}>Идентификаторы классов (через запятую)</Text>
+            <Controller
+              control={control}
+              name="class_ids"
+              render={({ field: { value, onChange, onBlur } }) => (
+                <TextInput
+                  value={value.join(", ")}
+                  onChangeText={(text) =>
+                    onChange(
+                      text
+                        .split(",")
+                        .map((item) => item.trim())
+                        .filter((item) => item.length > 0),
+                    )
+                  }
+                  onBlur={onBlur}
+                  placeholder="UUID классов"
+                  style={styles.input}
+                  placeholderTextColor={colors.inputPlaceholder}
+                />
+              )}
+            />
+            <FormErrorText>{errors.class_ids?.message}</FormErrorText>
+          </View>
+
+          <View style={styles.field}>
+            <Text style={styles.label}>Идентификаторы подклассов (через запятую)</Text>
+            <Controller
+              control={control}
+              name="subclass_ids"
+              render={({ field: { value, onChange, onBlur } }) => (
+                <TextInput
+                  value={value.join(", ")}
+                  onChangeText={(text) =>
+                    onChange(
+                      text
+                        .split(",")
+                        .map((item) => item.trim())
+                        .filter((item) => item.length > 0),
+                    )
+                  }
+                  onBlur={onBlur}
+                  placeholder="UUID подклассов"
+                  style={styles.input}
+                  placeholderTextColor={colors.inputPlaceholder}
+                />
+              )}
+            />
+            <FormErrorText>{errors.subclass_ids?.message}</FormErrorText>
+          </View>
+
+          <View style={styles.field}>
+            <Text style={styles.label}>Спасброски (через запятую)</Text>
+            <Controller
+              control={control}
+              name="saving_throws"
+              render={({ field: { value, onChange, onBlur } }) => (
+                <TextInput
+                  value={value.join(", ")}
+                  onChangeText={(text) =>
+                    onChange(
+                      text
+                        .split(",")
+                        .map((item) => item.trim())
+                        .filter((item) => item.length > 0),
+                    )
+                  }
+                  onBlur={onBlur}
+                  placeholder="strength, dexterity"
+                  style={styles.input}
+                  placeholderTextColor={colors.inputPlaceholder}
+                />
+              )}
+            />
+            <FormErrorText>{errors.saving_throws?.message}</FormErrorText>
+          </View>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Описание следующего уровня</Text>
+          <View style={styles.field}>
+            <Controller
+              control={control}
+              name="next_level_description"
+              render={({ field: { value, onChange, onBlur } }) => (
+                <TextInput
+                  value={value}
+                  onChangeText={onChange}
+                  onBlur={onBlur}
+                  placeholder="Как меняется заклинание"
+                  multiline
+                  style={[styles.input, styles.textArea]}
+                  placeholderTextColor={colors.inputPlaceholder}
+                />
+              )}
+            />
+            <FormErrorText>
+              {errors.next_level_description?.message}
+            </FormErrorText>
+          </View>
+        </View>
       </View>
 
       <FormSubmitButton
@@ -540,5 +872,27 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+  },
+  selectorContainer: {
+    gap: 8,
+  },
+  mutedText: {
+    color: colors.textSecondary,
+    fontSize: 12,
+  },
+  sourceList: {
+    gap: 8,
+  },
+  sourceItem: {
+    borderWidth: 1,
+    borderColor: colors.inputBorder,
+    borderRadius: 6,
+    padding: 10,
+    backgroundColor: colors.inputBackground,
+    gap: 4,
+  },
+  sourceItemSelected: {
+    borderColor: colors.accent,
+    backgroundColor: colors.accentSoft,
   },
 });
