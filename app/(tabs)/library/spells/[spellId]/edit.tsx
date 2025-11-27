@@ -5,7 +5,12 @@ import React from "react";
 import { ActivityIndicator, Pressable, StyleSheet } from "react-native";
 
 import { getSpellById } from "@/features/spells/api/getSpellById";
-import type { Spell, SpellCreateInput } from "@/features/spells/api/types";
+import type {
+  Spell,
+  SpellCreateInput,
+  SpellSchoolId,
+} from "@/features/spells/api/types";
+import { getSpellSchools } from "@/features/spells/api/getSpellSchools";
 import { SpellForm } from "@/features/spells/components/SpellForm";
 import { getSources } from "@/features/sources/api/getSources";
 import type { Source } from "@/features/sources/api/types";
@@ -48,6 +53,17 @@ export default function SpellEditScreen() {
     queryFn: getSources,
   });
 
+  const {
+    data: schools,
+    isLoading: isSchoolsLoading,
+    isError: isSchoolsError,
+    error: schoolsError,
+    refetch: refetchSchools,
+  } = useQuery<SpellSchoolId[], Error>({
+    queryKey: ["spellSchools"],
+    queryFn: getSpellSchools,
+  });
+
   if (!spellId) {
     return (
       <ScreenContainer style={styles.centered}>
@@ -56,7 +72,9 @@ export default function SpellEditScreen() {
     );
   }
 
-  if (isLoading || isSourcesLoading) {
+  const isLoadingAll = isLoading || isSourcesLoading || isSchoolsLoading;
+
+  if (isLoadingAll) {
     return (
       <ScreenContainer style={styles.centered}>
         <ActivityIndicator color={colors.textSecondary} />
@@ -65,12 +83,17 @@ export default function SpellEditScreen() {
     );
   }
 
-  if (isError || isSourcesError || !spell) {
-    console.error("Error loading spell for edit:", error ?? sourcesError);
-    const combinedErrorMessage = sourcesError?.message ?? error?.message;
+  if (isError || isSourcesError || isSchoolsError || !spell) {
+    console.error(
+      "Error loading spell for edit:",
+      error ?? sourcesError ?? schoolsError,
+    );
+    const combinedErrorMessage =
+      sourcesError?.message ?? error?.message ?? schoolsError?.message;
     const handleRefetch = () => {
       refetch();
       refetchSources();
+      refetchSchools();
     };
 
     return (
@@ -89,6 +112,36 @@ export default function SpellEditScreen() {
     );
   }
 
+  const hasSources = (sources ?? []).length > 0;
+  const hasSchools = (schools ?? []).length > 0;
+
+  if (!hasSources) {
+    return (
+      <ScreenContainer style={styles.centered}>
+        <BodyText style={styles.helperText}>
+          Не удалось загрузить список источников. Вернитесь назад и создайте
+          хотя бы один источник.
+        </BodyText>
+        <Pressable style={styles.retryButton} onPress={() => refetchSources()}>
+          <BodyText style={styles.retryButtonText}>Повторить</BodyText>
+        </Pressable>
+      </ScreenContainer>
+    );
+  }
+
+  if (!hasSchools) {
+    return (
+      <ScreenContainer style={styles.centered}>
+        <BodyText style={styles.helperText}>
+          Не удалось загрузить список школ заклинаний.
+        </BodyText>
+        <Pressable style={styles.retryButton} onPress={() => refetchSchools()}>
+          <BodyText style={styles.retryButtonText}>Повторить</BodyText>
+        </Pressable>
+      </ScreenContainer>
+    );
+  }
+
   const initialValues = spell as SpellCreateInput; // позже можно заменить на явный маппер
 
   return (
@@ -97,6 +150,7 @@ export default function SpellEditScreen() {
       spellId={spellId}
       initialValues={initialValues}
       sources={sources}
+      schools={schools}
       showBackButton
       onSuccess={() => {
         router.replace({
