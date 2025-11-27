@@ -23,14 +23,6 @@ export default function SpellEditScreen() {
       ? spellIdParam[0]
       : undefined;
 
-  if (!spellId) {
-    return (
-      <ScreenContainer style={styles.centered}>
-        <BodyText>Не указан идентификатор заклинания.</BodyText>
-      </ScreenContainer>
-    );
-  }
-
   const {
     data: spell,
     isLoading,
@@ -38,9 +30,18 @@ export default function SpellEditScreen() {
     error,
     refetch,
   } = useQuery<Spell, Error>({
-    queryKey: ["spells", spellId],
-    queryFn: () => getSpellById(spellId),
+    queryKey: ["spells", spellId ?? "unknown-spell"],
+    queryFn: () => getSpellById(spellId as string),
+    enabled: Boolean(spellId),
   });
+
+  if (!spellId) {
+    return (
+      <ScreenContainer style={styles.centered}>
+        <BodyText>Не указан идентификатор заклинания.</BodyText>
+      </ScreenContainer>
+    );
+  }
 
   if (isLoading) {
     return (
