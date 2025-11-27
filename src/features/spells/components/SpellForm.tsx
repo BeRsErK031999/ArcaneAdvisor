@@ -15,6 +15,8 @@ import { createSpell } from "@/features/spells/api/createSpell";
 import {
   SpellCreateSchema,
   type SpellCreateInput,
+  type SpellSchoolId,
+  SPELL_SCHOOL_IDS,
 } from "@/features/spells/api/types";
 import { updateSpell } from "@/features/spells/api/updateSpell";
 import type { Source } from "@/features/sources/api/types";
@@ -33,6 +35,7 @@ interface SpellFormProps {
   onSuccess?: () => void;
   submitLabel?: string;
   sources?: Source[];
+  schools?: SpellSchoolId[];
   showBackButton?: boolean;
   onBackPress?: () => void;
 }
@@ -42,7 +45,7 @@ const defaultValues: SpellCreateInput = {
   description: "",
   next_level_description: "",
   level: 1,
-  school: "",
+  school: SPELL_SCHOOL_IDS[0],
   concentration: false,
   ritual: false,
   class_ids: [],
@@ -70,6 +73,7 @@ export const SpellForm: React.FC<SpellFormProps> = ({
   onSuccess,
   submitLabel,
   sources,
+  schools,
   showBackButton,
   onBackPress,
 }) => {
@@ -288,15 +292,39 @@ export const SpellForm: React.FC<SpellFormProps> = ({
               <Controller
                 control={control}
                 name="school"
-                render={({ field: { value, onChange, onBlur } }) => (
-                  <TextInput
-                    value={value}
-                    onChangeText={onChange}
-                    onBlur={onBlur}
-                    placeholder="Эвокация"
-                    style={styles.input}
-                    placeholderTextColor={colors.inputPlaceholder}
-                  />
+                render={({ field: { value, onChange } }) => (
+                  <View style={styles.schoolList}>
+                    {(schools ?? []).map((schoolId) => {
+                      const isSelected = value === schoolId;
+
+                      return (
+                        <Pressable
+                          key={schoolId}
+                          onPress={() => onChange(schoolId)}
+                          style={[
+                            styles.schoolItem,
+                            isSelected && styles.schoolItemSelected,
+                          ]}
+                        >
+                          <Text
+                            style={
+                              isSelected
+                                ? styles.schoolItemTextSelected
+                                : styles.schoolItemText
+                            }
+                          >
+                            {schoolId}
+                          </Text>
+                        </Pressable>
+                      );
+                    })}
+
+                    {(schools ?? []).length === 0 && (
+                      <Text style={styles.schoolEmptyText}>
+                        Список школ заклинаний не загружен.
+                      </Text>
+                    )}
+                  </View>
                 )}
               />
               <FormErrorText>{errors.school?.message}</FormErrorText>
@@ -894,6 +922,36 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   sourceEmptyText: {
+    color: colors.textMuted,
+    fontSize: 13,
+  },
+  schoolList: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  schoolItem: {
+    borderWidth: 1,
+    borderColor: colors.borderMuted,
+    borderRadius: 999,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    backgroundColor: colors.backgroundSecondary,
+  },
+  schoolItemSelected: {
+    borderColor: colors.accent,
+    backgroundColor: colors.surfaceElevated ?? colors.surface,
+  },
+  schoolItemText: {
+    color: colors.textPrimary,
+    fontSize: 13,
+  },
+  schoolItemTextSelected: {
+    color: colors.accent,
+    fontWeight: "600",
+    fontSize: 13,
+  },
+  schoolEmptyText: {
     color: colors.textMuted,
     fontSize: 13,
   },
