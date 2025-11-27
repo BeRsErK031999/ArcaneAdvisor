@@ -1,5 +1,6 @@
-import React from "react";
+// app/(tabs)/library/index.tsx
 import { Link, type Href } from "expo-router";
+import React from "react";
 import {
   Pressable,
   ScrollView,
@@ -35,6 +36,7 @@ const sections: Section[] = [
   { label: "Расы", href: "/(tabs)/library/races" },
   { label: "Подрасы", href: "/(tabs)/library/subraces" },
   { label: "Способности (feats)", href: "/(tabs)/library/feats" },
+
   { label: "Доспехи", href: "/(tabs)/library/equipment/armors", group: "Снаряжение" },
   { label: "Оружие", href: "/(tabs)/library/equipment/weapons", group: "Снаряжение" },
   { label: "Инструменты", href: "/(tabs)/library/equipment/tools", group: "Снаряжение" },
@@ -50,6 +52,7 @@ const sections: Section[] = [
     href: "/(tabs)/library/equipment/weapon-properties",
     group: "Снаряжение",
   },
+
   { label: "Источники", href: "/(tabs)/library/sources" },
   {
     label: "Справочники",
@@ -61,8 +64,8 @@ const sections: Section[] = [
 
 export default function LibraryMenuScreen() {
   const { width } = useWindowDimensions();
-  let columns = 1;
 
+  let columns = 1;
   if (width >= COLUMN_BREAKPOINTS.desktop) {
     columns = 3;
   } else if (width >= COLUMN_BREAKPOINTS.tablet) {
@@ -89,10 +92,11 @@ export default function LibraryMenuScreen() {
           {sections.map((section) => {
             const items: React.ReactNode[] = [];
 
+            // Заголовок группы показываем только один раз
             if (section.group && !renderedGroups.has(section.group)) {
               renderedGroups.add(section.group);
               items.push(
-                <View key={`${section.group}-title`} style={[styles.groupWrapper]}>
+                <View key={`${section.group}-title`} style={styles.groupWrapper}>
                   <Text style={styles.groupTitle}>{section.group}</Text>
                 </View>,
               );
@@ -102,11 +106,16 @@ export default function LibraryMenuScreen() {
               <View key={section.label} style={[styles.cardWrapper, cardWrapperStyle]}>
                 <Link href={section.href} asChild>
                   <Pressable
-                    style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
+                    style={({ pressed }) => [
+                      styles.card,
+                      pressed && styles.cardPressed,
+                    ]}
                   >
                     <Text style={styles.cardTitle}>{section.label}</Text>
                     {section.description ? (
-                      <Text style={styles.cardDescription}>{section.description}</Text>
+                      <Text style={styles.cardDescription}>
+                        {section.description}
+                      </Text>
                     ) : null}
                   </Pressable>
                 </Link>
@@ -128,22 +137,28 @@ const styles = StyleSheet.create({
     rowGap: 16,
   },
   pageTitle: {
-    marginBottom: 0,
+    marginBottom: 8,
   },
+
+  // контейнер грида
   menuContainer: {
     flexDirection: "row",
     flexWrap: "wrap",
     columnGap: 16,
     rowGap: 16,
   },
+
+  // обёртка карточки — отвечает за колонку
   cardWrapper: {
-    minHeight: 84,
+    minHeight: 90,
   },
+
+  // сама "кнопка" раздела
   card: {
-    backgroundColor: colors.surface,
+    backgroundColor: colors.backgroundSecondary, // чуть светлее, чем общий фон
     borderColor: colors.borderMuted,
-    borderWidth: 1,
-    borderRadius: 8,
+    borderWidth: 1.5,                            // явная обводка
+    borderRadius: 10,
     paddingVertical: 12,
     paddingHorizontal: 14,
     justifyContent: "center",
@@ -154,7 +169,7 @@ const styles = StyleSheet.create({
     borderColor: colors.accent,
   },
   cardTitle: {
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: "700",
     color: colors.textPrimary,
   },
@@ -164,6 +179,8 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     lineHeight: 18,
   },
+
+  // заголовки групп
   groupWrapper: {
     flexBasis: "100%",
   },
@@ -171,7 +188,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "600",
     color: colors.textSecondary,
-    marginTop: 16,
+    marginTop: 8,
     marginBottom: 4,
   },
 });
