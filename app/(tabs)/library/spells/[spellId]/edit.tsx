@@ -7,6 +7,8 @@ import { ActivityIndicator, Pressable, StyleSheet } from "react-native";
 import { getSpellById } from "@/features/spells/api/getSpellById";
 import type { Spell, SpellCreateInput } from "@/features/spells/api/types";
 import { SpellForm } from "@/features/spells/components/SpellForm";
+import { getSources } from "@/features/sources/api/getSources";
+import type { Source } from "@/features/sources/api/types";
 import { colors } from "@/shared/theme/colors";
 import { ScreenContainer } from "@/shared/ui/ScreenContainer";
 import { BodyText } from "@/shared/ui/Typography";
@@ -35,6 +37,17 @@ export default function SpellEditScreen() {
     enabled: Boolean(spellId),
   });
 
+  const {
+    data: sources,
+    isLoading: isSourcesLoading,
+    isError: isSourcesError,
+    error: sourcesError,
+    refetch: refetchSources,
+  } = useQuery<Source[], Error>({
+    queryKey: ["sources"],
+    queryFn: getSources,
+  });
+
   if (!spellId) {
     return (
       <ScreenContainer style={styles.centered}>
@@ -43,27 +56,33 @@ export default function SpellEditScreen() {
     );
   }
 
-  if (isLoading) {
+  if (isLoading || isSourcesLoading) {
     return (
       <ScreenContainer style={styles.centered}>
         <ActivityIndicator color={colors.textSecondary} />
-        <BodyText style={styles.helperText}>Загружаю заклинание…</BodyText>
+        <BodyText style={styles.helperText}>Загружаю данные…</BodyText>
       </ScreenContainer>
     );
   }
 
-  if (isError || !spell) {
-    console.error("Error loading spell for edit:", error);
+  if (isError || isSourcesError || !spell) {
+    console.error("Error loading spell for edit:", error ?? sourcesError);
+    const combinedErrorMessage = sourcesError?.message ?? error?.message;
+    const handleRefetch = () => {
+      refetch();
+      refetchSources();
+    };
+
     return (
       <ScreenContainer style={styles.centered}>
         <BodyText style={styles.errorText}>
           Не удалось загрузить заклинание для редактирования.
         </BodyText>
-        {error?.message ? (
-          <BodyText style={styles.errorDetails}>{error.message}</BodyText>
+        {combinedErrorMessage ? (
+          <BodyText style={styles.errorDetails}>{combinedErrorMessage}</BodyText>
         ) : null}
 
-        <Pressable style={styles.retryButton} onPress={() => refetch()}>
+        <Pressable style={styles.retryButton} onPress={handleRefetch}>
           <BodyText style={styles.retryButtonText}>Повторить</BodyText>
         </Pressable>
       </ScreenContainer>
@@ -77,6 +96,7 @@ export default function SpellEditScreen() {
       mode="edit"
       spellId={spellId}
       initialValues={initialValues}
+      sources={sources}
       onSuccess={() => {
         router.replace({
           pathname: "/(tabs)/library/spells/[spellId]",

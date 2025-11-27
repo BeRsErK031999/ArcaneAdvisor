@@ -1,5 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import React from "react";
 import { Controller, useForm } from "react-hook-form";
 import {
@@ -17,11 +17,12 @@ import {
   type SpellCreateInput,
 } from "@/features/spells/api/types";
 import { updateSpell } from "@/features/spells/api/updateSpell";
-import { getSources } from "@/features/sources/api/getSources";
+import type { Source } from "@/features/sources/api/types";
 import { FormErrorText } from "@/shared/forms/FormErrorText";
 import { FormScreenLayout } from "@/shared/forms/FormScreenLayout";
 import { FormSubmitButton } from "@/shared/forms/FormSubmitButton";
 import { colors } from "@/shared/theme/colors";
+import { BodyText } from "@/shared/ui/Typography";
 
 type SpellFormMode = "create" | "edit";
 
@@ -31,6 +32,7 @@ interface SpellFormProps {
   initialValues?: SpellCreateInput;
   onSuccess?: () => void;
   submitLabel?: string;
+  sources?: Source[];
 }
 
 const defaultValues: SpellCreateInput = {
@@ -65,6 +67,7 @@ export const SpellForm: React.FC<SpellFormProps> = ({
   initialValues,
   onSuccess,
   submitLabel,
+  sources,
 }) => {
   if (mode === "edit" && !spellId) {
     console.warn("SpellForm: spellId is required in edit mode");
@@ -86,8 +89,6 @@ export const SpellForm: React.FC<SpellFormProps> = ({
   });
 
   const [submitError, setSubmitError] = React.useState<string | null>(null);
-  const sourcesQuery = useQuery({ queryKey: ["sources"], queryFn: getSources });
-  const currentSourceId = watch("source_id");
   const currentDuration = watch("duration.game_time");
   const currentSplash = watch("splash.splash");
 
@@ -96,17 +97,6 @@ export const SpellForm: React.FC<SpellFormProps> = ({
       reset(initialValues);
     }
   }, [initialValues, reset]);
-
-  React.useEffect(() => {
-    if (
-      !initialValues &&
-      !currentSourceId &&
-      sourcesQuery.data &&
-      sourcesQuery.data.length > 0
-    ) {
-      setValue("source_id", sourcesQuery.data[0].source_id);
-    }
-  }, [currentSourceId, initialValues, setValue, sourcesQuery.data]);
 
   const createMutation = useMutation({
     mutationFn: createSpell,
@@ -221,46 +211,40 @@ export const SpellForm: React.FC<SpellFormProps> = ({
               control={control}
               name="source_id"
               render={({ field: { value, onChange } }) => (
-                <View style={styles.selectorContainer}>
-                  {sourcesQuery.isLoading ? (
-                    <Text style={styles.mutedText}>Загрузка источников...</Text>
-                  ) : null}
-
-                  {sourcesQuery.isError ? (
-                    <Text style={styles.errorText}>
-                      Не удалось загрузить источники
-                    </Text>
-                  ) : null}
-
-                  {!sourcesQuery.isLoading &&
-                  !sourcesQuery.isError &&
-                  sourcesQuery.data ? (
-                    <View style={styles.sourceList}>
-                      {sourcesQuery.data.map((source) => {
-                        const isSelected = value === source.source_id;
-                        return (
-                          <Pressable
-                            key={source.source_id}
-                            onPress={() => onChange(source.source_id)}
-                            style={[
-                              styles.sourceItem,
-                              isSelected && styles.sourceItemSelected,
-                            ]}
-                          >
-                            <Text style={styles.label}>{source.name}</Text>
-                            <Text style={styles.mutedText}>{source.name_in_english}</Text>
-                          </Pressable>
-                        );
-                      })}
-                    </View>
-                  ) : (
-                    <TextInput
-                      value={value}
-                      onChangeText={onChange}
-                      placeholder="UUID источника"
-                      style={styles.input}
-                      placeholderTextColor={colors.inputPlaceholder}
-                    />
+                <View style={styles.sourceList}>
+                  {(sources ?? []).map((source) => {
+                    const isSelected = value === source.source_id;
+                    return (
+                      <Pressable
+                        key={source.source_id}
+                        onPress={() => onChange(source.source_id)}
+                        style={[
+                          styles.sourceItem,
+                          isSelected && styles.sourceItemSelected,
+                        ]}
+                      >
+                        <BodyText
+                          style={
+                            isSelected
+                              ? styles.sourceItemTextSelected
+                              : styles.sourceItemText
+                          }
+                        >
+                          {source.name}
+                        </BodyText>
+                        {source.name_in_english ? (
+                          <BodyText style={styles.sourceItemSubtitle}>
+                            {source.name_in_english}
+                          </BodyText>
+                        ) : null}
+                      </Pressable>
+                    );
+                  })}
+                  {(sources ?? []).length === 0 && (
+                    <BodyText style={styles.sourceEmptyText}>
+                      Источников нет. Вернитесь назад и создайте хотя бы один
+                      источник.
+                    </BodyText>
                   )}
                 </View>
               )}
@@ -873,26 +857,36 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
   },
-  selectorContainer: {
-    gap: 8,
-  },
-  mutedText: {
-    color: colors.textSecondary,
-    fontSize: 12,
-  },
   sourceList: {
     gap: 8,
   },
   sourceItem: {
     borderWidth: 1,
-    borderColor: colors.inputBorder,
+    borderColor: colors.borderMuted,
     borderRadius: 6,
-    padding: 10,
-    backgroundColor: colors.inputBackground,
-    gap: 4,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    backgroundColor: colors.surface,
   },
   sourceItemSelected: {
     borderColor: colors.accent,
-    backgroundColor: colors.accentSoft,
+    backgroundColor: colors.surfaceElevated ?? colors.surface,
+  },
+  sourceItemText: {
+    color: colors.textPrimary,
+    fontWeight: "500",
+  },
+  sourceItemTextSelected: {
+    color: colors.accent,
+    fontWeight: "600",
+  },
+  sourceItemSubtitle: {
+    marginTop: 2,
+    color: colors.textMuted,
+    fontSize: 12,
+  },
+  sourceEmptyText: {
+    color: colors.textMuted,
+    fontSize: 13,
   },
 });

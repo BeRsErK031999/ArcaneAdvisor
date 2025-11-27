@@ -56,6 +56,7 @@ export default function SpellCreateScreen() {
   return (
     <SpellForm
       mode="create"
+      sources={sources}
       submitLabel="Создать заклинание"
       onSuccess={() => {
         router.replace("/(tabs)/library/spells");
