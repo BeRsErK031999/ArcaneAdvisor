@@ -1,9 +1,20 @@
-import React from 'react';
-import { ActivityIndicator, ScrollView, Text, TouchableOpacity, View } from 'react-native';
-import { useRouter } from 'expo-router';
-import { useQuery } from '@tanstack/react-query';
+// src/features/spells/components/SpellDetails.tsx
+import { useQuery } from "@tanstack/react-query";
+import { useRouter } from "expo-router";
+import React from "react";
+import {
+  ActivityIndicator,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  View,
+} from "react-native";
 
-import { getSpellById } from '@/features/spells/api/getSpellById';
+import { getSpellById } from "@/features/spells/api/getSpellById";
+import type { Spell } from "@/features/spells/api/types";
+import { colors } from "@/shared/theme/colors";
+import { ScreenContainer } from "@/shared/ui/ScreenContainer";
+import { BodyText, TitleText } from "@/shared/ui/Typography";
 
 interface SpellDetailsProps {
   spellId: string;
@@ -11,55 +22,69 @@ interface SpellDetailsProps {
 
 export function SpellDetails({ spellId }: SpellDetailsProps) {
   const router = useRouter();
-  const { data: spell, isLoading, isError, error, refetch } = useQuery({
-    queryKey: ['spells', spellId],
+  const {
+    data: spell,
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useQuery<Spell, Error>({
+    queryKey: ["spells", spellId],
     queryFn: () => getSpellById(spellId),
   });
 
+  // Состояние загрузки
   if (isLoading) {
     return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-        <ActivityIndicator />
-        <Text style={{ marginTop: 8 }}>Загружаю заклинание…</Text>
-      </View>
+      <ScreenContainer style={styles.centered}>
+        <ActivityIndicator color={colors.textSecondary} />
+        <BodyText style={styles.helperText}>Загружаю заклинание…</BodyText>
+      </ScreenContainer>
     );
   }
 
+  // Состояние ошибки
   if (isError) {
-    console.error('Failed to load spell:', error);
+    console.error("Failed to load spell:", error);
     return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-        <Text style={{ marginBottom: 8 }}>Ошибка при загрузке заклинания</Text>
-        <Text style={{ color: '#2563eb' }} onPress={() => refetch()}>
-          Повторить
-        </Text>
-      </View>
+      <ScreenContainer style={styles.centered}>
+        <BodyText style={[styles.helperText, styles.errorText]}>
+          Ошибка при загрузке заклинания
+        </BodyText>
+        <BodyText style={styles.errorDetails}>
+          {error?.message ?? "Неизвестная ошибка"}
+        </BodyText>
+
+        <Pressable style={styles.retryButton} onPress={() => refetch()}>
+          <BodyText style={styles.retryButtonText}>Повторить</BodyText>
+        </Pressable>
+      </ScreenContainer>
     );
   }
 
   if (!spell) {
     return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-        <Text>Заклинание не найдено.</Text>
-      </View>
+      <ScreenContainer style={styles.centered}>
+        <BodyText>Заклинание не найдено.</BodyText>
+      </ScreenContainer>
     );
   }
 
   const renderComponents = () => {
     const parts: string[] = [];
-    if (spell.components.verbal) parts.push('V');
-    if (spell.components.symbolic) parts.push('S');
-    if (spell.components.material) parts.push('M');
-    const base = parts.join(', ');
+    if (spell.components.verbal) parts.push("V");
+    if (spell.components.symbolic) parts.push("S");
+    if (spell.components.material) parts.push("M");
+    const base = parts.join(", ");
     if (spell.components.material && spell.components.materials.length > 0) {
-      return `${base} (${spell.components.materials.join(', ')})`;
+      return `${base} (${spell.components.materials.join(", ")})`;
     }
-    return base || '—';
+    return base || "—";
   };
 
   const renderDuration = () => {
     if (!spell.duration || !spell.duration.game_time) {
-      return 'Мгновенно';
+      return "Мгновенно";
     }
     const { count, unit } = spell.duration.game_time;
     return `${count} ${unit}`;
@@ -75,88 +100,200 @@ export function SpellDetails({ spellId }: SpellDetailsProps) {
 
   const renderSavingThrows = () => {
     if (!spell.saving_throws || spell.saving_throws.length === 0) {
-      return '—';
+      return "—";
     }
-    return spell.saving_throws.join(', ');
+    return spell.saving_throws.join(", ");
   };
 
   return (
-    <ScrollView contentContainerStyle={{ padding: 16, gap: 12 }}>
-      <View style={{ gap: 4 }}>
-        <Text style={{ fontSize: 24, fontWeight: '700' }}>{spell.name}</Text>
-        <Text style={{ color: '#6b7280' }}>{spell.name_in_english}</Text>
-        <Text style={{ color: '#374151' }}>
-          Уровень {spell.level}, школа: {spell.school}
-        </Text>
-      </View>
-
-      <TouchableOpacity
-        onPress={() =>
-          router.push({
-            pathname: '/(tabs)/library/spells/[spellId]/edit',
-            params: { spellId: spell.spell_id },
-          })
-        }
-        style={{
-          marginTop: 12,
-          marginBottom: 4,
-          alignSelf: 'flex-start',
-          paddingVertical: 6,
-          paddingHorizontal: 12,
-          borderRadius: 6,
-          backgroundColor: '#007bff',
-        }}
-      >
-        <Text style={{ color: '#fff', fontWeight: '500' }}>Редактировать</Text>
-      </TouchableOpacity>
-
-      <View style={{ backgroundColor: '#f9fafb', padding: 12, borderRadius: 8, gap: 6 }}>
-        <Text>
-          Время каста: {spell.casting_time.count} {spell.casting_time.unit}
-        </Text>
-        <Text>
-          Дистанция: {spell.spell_range.count} {spell.spell_range.unit}
-        </Text>
-        <Text>Длительность: {renderDuration()}</Text>
-        {renderSplash() ? <Text>Область: {renderSplash()}</Text> : null}
-        <Text>Концентрация: {spell.concentration ? 'да' : 'нет'}</Text>
-        <Text>Ритуал: {spell.ritual ? 'да' : 'нет'}</Text>
-      </View>
-
-      <View style={{ gap: 4 }}>
-        <Text style={{ fontWeight: '600' }}>Компоненты</Text>
-        <Text>{renderComponents()}</Text>
-      </View>
-
-      <View style={{ gap: 4 }}>
-        <Text style={{ fontWeight: '600' }}>Сейвы</Text>
-        <Text>{renderSavingThrows()}</Text>
-      </View>
-
-      {spell.damage_type?.name ? (
-        <View style={{ gap: 4 }}>
-          <Text style={{ fontWeight: '600' }}>Тип урона</Text>
-          <Text>{spell.damage_type.name}</Text>
+    <ScreenContainer>
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        {/* Заголовок + английское имя */}
+        <View style={styles.headerBlock}>
+          <TitleText>{spell.name}</TitleText>
+          {spell.name_in_english ? (
+            <BodyText style={styles.spellNameEn}>
+              {spell.name_in_english}
+            </BodyText>
+          ) : null}
+          <BodyText style={styles.spellMeta}>
+            Уровень {spell.level}, школа: {spell.school}
+          </BodyText>
         </View>
-      ) : null}
 
-      <View style={{ gap: 4 }}>
-        <Text style={{ fontWeight: '600' }}>Описание</Text>
-        <Text>{spell.description}</Text>
-      </View>
+        {/* Кнопка "Редактировать" */}
+        <Pressable
+          onPress={() =>
+            router.push({
+              pathname: "/(tabs)/library/spells/[spellId]/edit",
+              params: { spellId: spell.spell_id },
+            })
+          }
+          style={styles.editButton}
+        >
+          <BodyText style={styles.editButtonText}>Редактировать</BodyText>
+        </Pressable>
 
-      {spell.next_level_description ? (
-        <View style={{ gap: 4 }}>
-          <Text style={{ fontWeight: '600' }}>На высоких уровнях</Text>
-          <Text>{spell.next_level_description}</Text>
+        {/* Основные параметры каста */}
+        <View style={styles.block}>
+          <BodyText style={styles.blockTitle}>Параметры заклинания</BodyText>
+          <BodyText>
+            <BodyText style={styles.labelText}>Время каста: </BodyText>
+            {spell.casting_time.count} {spell.casting_time.unit}
+          </BodyText>
+          <BodyText>
+            <BodyText style={styles.labelText}>Дистанция: </BodyText>
+            {spell.spell_range.count} {spell.spell_range.unit}
+          </BodyText>
+          <BodyText>
+            <BodyText style={styles.labelText}>Длительность: </BodyText>
+            {renderDuration()}
+          </BodyText>
+          {renderSplash() ? (
+            <BodyText>
+              <BodyText style={styles.labelText}>Область: </BodyText>
+              {renderSplash()}
+            </BodyText>
+          ) : null}
+          <BodyText>
+            <BodyText style={styles.labelText}>Концентрация: </BodyText>
+            {spell.concentration ? "да" : "нет"}
+          </BodyText>
+          <BodyText>
+            <BodyText style={styles.labelText}>Ритуал: </BodyText>
+            {spell.ritual ? "да" : "нет"}
+          </BodyText>
         </View>
-      ) : null}
 
-      <View style={{ gap: 4 }}>
-        <Text style={{ fontWeight: '600' }}>Классы</Text>
-        <Text>Привязано к {spell.class_ids.length} классам</Text>
-        <Text>Привязано к {spell.subclass_ids.length} подклассам</Text>
-      </View>
-    </ScrollView>
+        {/* Компоненты */}
+        <View style={styles.block}>
+          <BodyText style={styles.blockTitle}>Компоненты</BodyText>
+          <BodyText>{renderComponents()}</BodyText>
+        </View>
+
+        {/* Сейвы */}
+        <View style={styles.block}>
+          <BodyText style={styles.blockTitle}>Сейвы</BodyText>
+          <BodyText>{renderSavingThrows()}</BodyText>
+        </View>
+
+        {/* Тип урона */}
+        {spell.damage_type?.name ? (
+          <View style={styles.block}>
+            <BodyText style={styles.blockTitle}>Тип урона</BodyText>
+            <BodyText>{spell.damage_type.name}</BodyText>
+          </View>
+        ) : null}
+
+        {/* Описание */}
+        <View style={styles.block}>
+          <BodyText style={styles.blockTitle}>Описание</BodyText>
+          <BodyText>{spell.description}</BodyText>
+        </View>
+
+        {/* На высоких уровнях */}
+        {spell.next_level_description ? (
+          <View style={styles.block}>
+            <BodyText style={styles.blockTitle}>На высоких уровнях</BodyText>
+            <BodyText>{spell.next_level_description}</BodyText>
+          </View>
+        ) : null}
+
+        {/* Привязка к классам/подклассам */}
+        <View style={styles.block}>
+          <BodyText style={styles.blockTitle}>Классы</BodyText>
+          <BodyText>
+            Привязано к {spell.class_ids.length} классам
+          </BodyText>
+          <BodyText>
+            Привязано к {spell.subclass_ids.length} подклассам
+          </BodyText>
+        </View>
+      </ScrollView>
+    </ScreenContainer>
   );
 }
+
+const styles = StyleSheet.create({
+  centered: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    rowGap: 12,
+  },
+  helperText: {
+    marginTop: 8,
+    fontSize: 14,
+    color: colors.textSecondary,
+    textAlign: "center",
+  },
+  errorText: {
+    color: colors.error,
+    fontWeight: "600",
+  },
+  errorDetails: {
+    marginTop: 4,
+    fontSize: 12,
+    color: colors.textMuted,
+    textAlign: "center",
+  },
+  retryButton: {
+    marginTop: 16,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    backgroundColor: colors.buttonSecondary,
+    borderWidth: 1,
+    borderColor: colors.borderMuted,
+  },
+  retryButtonText: {
+    color: colors.buttonSecondaryText,
+    fontWeight: "500",
+  },
+
+  scrollContent: {
+    paddingBottom: 24,
+    rowGap: 16,
+  },
+
+  headerBlock: {
+    rowGap: 4,
+  },
+  spellNameEn: {
+    color: colors.textSecondary,
+  },
+  spellMeta: {
+    color: colors.textMuted,
+    fontSize: 13,
+  },
+
+  editButton: {
+    alignSelf: "flex-start",
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 6,
+    backgroundColor: colors.buttonPrimary,
+  },
+  editButtonText: {
+    color: colors.buttonPrimaryText,
+    fontWeight: "500",
+  },
+
+  block: {
+    backgroundColor: colors.surface,
+    borderRadius: 8,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: colors.borderMuted,
+    rowGap: 4,
+  },
+  blockTitle: {
+    fontWeight: "700",
+    marginBottom: 4,
+    color: colors.textPrimary,
+  },
+  labelText: {
+    fontWeight: "600",
+    color: colors.textSecondary,
+  },
+});

@@ -1,15 +1,17 @@
-import React from 'react';
-import { useLocalSearchParams } from 'expo-router';
-import { Text, View } from 'react-native';
+// app/(tabs)/library/spells/[spellId].tsx
+import { useLocalSearchParams } from "expo-router";
+import React from "react";
 
-import { SpellDetails } from '@/features/spells/components/SpellDetails';
+import { SpellDetails } from "@/features/spells/components/SpellDetails";
+import { ScreenContainer } from "@/shared/ui/ScreenContainer";
+import { BodyText } from "@/shared/ui/Typography";
 
 export default function SpellDetailsScreen() {
   const params = useLocalSearchParams<{ spellId?: string | string[] }>();
 
   const spellIdParam = params.spellId;
   const spellId =
-    typeof spellIdParam === 'string'
+    typeof spellIdParam === "string"
       ? spellIdParam
       : Array.isArray(spellIdParam)
       ? spellIdParam[0]
@@ -17,9 +19,11 @@ export default function SpellDetailsScreen() {
 
   if (!spellId) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 16 }}>
-        <Text>Не указан идентификатор заклинания.</Text>
-      </View>
+      <ScreenContainer
+        style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
+      >
+        <BodyText>Не указан идентификатор заклинания.</BodyText>
+      </ScreenContainer>
     );
   }
 
