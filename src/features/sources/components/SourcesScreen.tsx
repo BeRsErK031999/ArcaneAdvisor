@@ -6,6 +6,7 @@ import {
   StyleSheet,
   View,
 } from "react-native";
+import { Link } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 
 import { getSources } from "@/features/sources/api/getSources";
@@ -52,6 +53,14 @@ export const SourcesScreen: React.FC = () => {
     return (
       <ScreenContainer style={styles.centered}>
         <BodyText style={styles.helperText}>Источников пока нет</BodyText>
+
+        <Link href="/(tabs)/library/sources/create" asChild>
+          <Pressable style={styles.createButton}>
+            <BodyText style={styles.createButtonText}>
+              Создать первый источник
+            </BodyText>
+          </Pressable>
+        </Link>
       </ScreenContainer>
     );
   }
@@ -66,6 +75,16 @@ export const SourcesScreen: React.FC = () => {
 
   return (
     <ScreenContainer>
+      <View style={styles.headerRow}>
+        <BodyText style={styles.title}>Источники</BodyText>
+
+        <Link href="/(tabs)/library/sources/create" asChild>
+          <Pressable style={styles.createButton}>
+            <BodyText style={styles.createButtonText}>+ Создать</BodyText>
+          </Pressable>
+        </Link>
+      </View>
+
       <FlatList
         data={sources}
         keyExtractor={(item) => item.source_id}
@@ -110,6 +129,29 @@ const styles = StyleSheet.create({
   },
   retryButtonText: {
     color: colors.buttonSecondaryText,
+    fontWeight: "600",
+  },
+  headerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 16,
+  },
+  title: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: colors.textPrimary,
+  },
+  createButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    backgroundColor: colors.buttonPrimary,
+    borderWidth: 1,
+    borderColor: colors.buttonPrimary,
+  },
+  createButtonText: {
+    color: colors.buttonPrimaryText,
     fontWeight: "600",
   },
   listContent: {
