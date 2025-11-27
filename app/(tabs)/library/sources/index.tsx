@@ -1,6 +1,7 @@
-import React from 'react';
-import { SourcesScreen } from '@/features/sources/components/SourcesScreen';
+import React from "react";
 
-export default function SourcesPage() {
+import { SourcesScreen } from "@/features/sources/components/SourcesScreen";
+
+export default function SourcesListScreen() {
   return <SourcesScreen />;
 }
