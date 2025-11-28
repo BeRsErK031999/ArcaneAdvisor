@@ -325,13 +325,13 @@ export const SpellForm: React.FC<SpellFormProps> = ({
 
                     {!isLoadingSchools && !isErrorSchools && schools.length > 0 && (
                       <>
-                        {schools.map((schoolId) => {
-                          const isSelected = value === schoolId;
+                        {schools.map((school) => {
+                          const isSelected = value === school.id;
 
                           return (
                             <Pressable
-                              key={schoolId}
-                              onPress={() => onChange(schoolId)}
+                              key={school.id}
+                              onPress={() => onChange(school.id)}
                               style={[
                                 styles.schoolItem,
                                 isSelected && styles.schoolItemSelected,
@@ -344,7 +344,7 @@ export const SpellForm: React.FC<SpellFormProps> = ({
                                     : styles.schoolItemText
                                 }
                               >
-                                {schoolId}
+                                {school.label}
                               </Text>
                             </Pressable>
                           );
@@ -354,7 +354,7 @@ export const SpellForm: React.FC<SpellFormProps> = ({
 
                     {!isLoadingSchools && !isErrorSchools && schools.length === 0 && (
                       <BodyText style={styles.schoolHelperText}>
-                        Пока нет заклинаний, от которых можно взять список школ.
+                        Список школ заклинаний пуст.
                       </BodyText>
                     )}
                   </View>
