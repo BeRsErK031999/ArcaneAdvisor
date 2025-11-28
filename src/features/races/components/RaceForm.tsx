@@ -1,20 +1,37 @@
 import React from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { StyleSheet, Text, TextInput, View } from 'react-native';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   RaceCreateSchema,
   type RaceCreateInput,
 } from '@/features/races/api/types';
 import { createRace } from '@/features/races/api/createRace';
 import { updateRace } from '@/features/races/api/updateRace';
+import { getSources } from '@/features/sources/api/getSources';
+import { getCreatureTypes } from '@/features/dictionaries/api/getCreatureTypes';
+import { getCreatureSizes } from '@/features/dictionaries/api/getCreatureSizes';
+import { getLengthUnits } from '@/features/dictionaries/api/getLengthUnits';
 import { FormErrorText } from '@/shared/forms/FormErrorText';
 import { FormScreenLayout } from '@/shared/forms/FormScreenLayout';
 import { FormSubmitButton } from '@/shared/forms/FormSubmitButton';
+import { BackButton } from '@/shared/ui/BackButton';
+import { SelectField } from '@/shared/forms/SelectField';
+import { MultiSelectField } from '@/shared/forms/MultiSelectField';
+import type { SelectOption } from '@/shared/forms/SelectField';
 import { colors } from '@/shared/theme/colors';
 
 type RaceFormMode = 'create' | 'edit';
+
+const ABILITY_OPTIONS: SelectOption[] = [
+  { value: 'strength', label: 'Сила (STR)' },
+  { value: 'dexterity', label: 'Ловкость (DEX)' },
+  { value: 'constitution', label: 'Телосложение (CON)' },
+  { value: 'intelligence', label: 'Интеллект (INT)' },
+  { value: 'wisdom', label: 'Мудрость (WIS)' },
+  { value: 'charisma', label: 'Харизма (CHA)' },
+];
 
 interface RaceFormProps {
   mode?: RaceFormMode;
@@ -64,23 +81,76 @@ export const RaceForm: React.FC<RaceFormProps> = ({
   });
 
   const [submitError, setSubmitError] = React.useState<string | null>(null);
-  const [abilityBonuses, setAbilityBonuses] = React.useState('');
 
   React.useEffect(() => {
     if (initialValues) {
       reset(initialValues);
-      if (initialValues.increase_modifiers?.length) {
-        const bonusesText = initialValues.increase_modifiers
-          .map(
-            (modifier) => `${modifier.modifier}:${modifier.bonus >= 0 ? '+' : ''}${modifier.bonus}`,
-          )
-          .join(', ');
-        setAbilityBonuses(bonusesText);
-      } else {
-        setAbilityBonuses('');
-      }
     }
   }, [initialValues, reset]);
+
+  const { data: sources, isLoading: isSourcesLoading } = useQuery({
+    queryKey: ['sources'],
+    queryFn: getSources,
+  });
+
+  const { data: creatureTypes, isLoading: isCreatureTypesLoading } = useQuery({
+    queryKey: ['creature-types'],
+    queryFn: getCreatureTypes,
+  });
+
+  const { data: creatureSizes, isLoading: isCreatureSizesLoading } = useQuery({
+    queryKey: ['creature-sizes'],
+    queryFn: getCreatureSizes,
+  });
+
+  const { data: lengthUnits, isLoading: isLengthUnitsLoading } = useQuery({
+    queryKey: ['length-units'],
+    queryFn: getLengthUnits,
+  });
+
+  const sourceOptions: SelectOption[] = React.useMemo(
+    () =>
+      sources
+        ? sources.map((s) => ({
+            value: s.source_id,
+            label: s.name,
+          }))
+        : [],
+    [sources],
+  );
+
+  const creatureTypeOptions: SelectOption[] = React.useMemo(
+    () =>
+      creatureTypes
+        ? Object.entries(creatureTypes).map(([key, value]) => ({
+            value: key,
+            label: value,
+          }))
+        : [],
+    [creatureTypes],
+  );
+
+  const creatureSizeOptions: SelectOption[] = React.useMemo(
+    () =>
+      creatureSizes
+        ? Object.entries(creatureSizes).map(([key, value]) => ({
+            value: key,
+            label: value,
+          }))
+        : [],
+    [creatureSizes],
+  );
+
+  const lengthUnitOptions: SelectOption[] = React.useMemo(
+    () =>
+      lengthUnits
+        ? Object.entries(lengthUnits).map(([key, value]) => ({
+            value: key,
+            label: value,
+          }))
+        : [],
+    [lengthUnits],
+  );
 
   const createMutation = useMutation({
     mutationFn: createRace,
@@ -110,33 +180,11 @@ export const RaceForm: React.FC<RaceFormProps> = ({
     setSubmitError(null);
 
     try {
-      const parsedModifiers = abilityBonuses.trim()
-        ? (abilityBonuses
-            .split(',')
-            .map((raw) => {
-              const [modifier, bonusRaw] = raw.split(':').map((item) => item.trim());
-              const bonus = Number.parseInt(bonusRaw ?? '', 10);
-
-              if (!modifier || Number.isNaN(bonus)) {
-                return null;
-              }
-
-              return { modifier, bonus };
-            })
-            .filter(Boolean) as RaceCreateInput['increase_modifiers'])
-        : values.increase_modifiers;
-
-      const payload: RaceCreateInput = {
-        ...values,
-        increase_modifiers: parsedModifiers,
-      };
-
       if (mode === 'edit') {
-        await updateMutation.mutateAsync(payload);
+        await updateMutation.mutateAsync(values);
       } else {
-        await createMutation.mutateAsync(payload);
+        await createMutation.mutateAsync(values);
         reset(defaultValues);
-        setAbilityBonuses('');
       }
 
       onSuccess?.();
@@ -154,7 +202,7 @@ export const RaceForm: React.FC<RaceFormProps> = ({
   const title = mode === 'edit' ? 'Редактировать расу' : 'Создать расу';
 
   return (
-    <FormScreenLayout title={title}>
+    <FormScreenLayout title={title} leftAction={<BackButton />}>
       {submitError ? <Text style={styles.errorText}>{submitError}</Text> : null}
 
       <View style={styles.field}>
@@ -220,18 +268,18 @@ export const RaceForm: React.FC<RaceFormProps> = ({
         <Controller
           control={control}
           name="creature_type"
-          render={({ field: { value, onChange, onBlur } }) => (
-            <TextInput
+          render={({ field: { value, onChange } }) => (
+            <SelectField
+              label="Тип существа"
+              placeholder="Выберите тип (например, humanoid)"
               value={value}
-              onChangeText={onChange}
-              onBlur={onBlur}
-              placeholder="humanoid"
-              style={styles.input}
-              placeholderTextColor={colors.inputPlaceholder}
+              onChange={onChange}
+              options={creatureTypeOptions}
+              isLoading={isCreatureTypesLoading}
+              errorMessage={errors.creature_type?.message}
             />
           )}
         />
-        <FormErrorText>{errors.creature_type?.message}</FormErrorText>
       </View>
 
       <View style={styles.field}>
@@ -239,18 +287,18 @@ export const RaceForm: React.FC<RaceFormProps> = ({
         <Controller
           control={control}
           name="creature_size"
-          render={({ field: { value, onChange, onBlur } }) => (
-            <TextInput
+          render={({ field: { value, onChange } }) => (
+            <SelectField
+              label="Размер"
+              placeholder="Выберите размер (small, medium, large...)"
               value={value}
-              onChangeText={onChange}
-              onBlur={onBlur}
-              placeholder="medium"
-              style={styles.input}
-              placeholderTextColor={colors.inputPlaceholder}
+              onChange={onChange}
+              options={creatureSizeOptions}
+              isLoading={isCreatureSizesLoading}
+              errorMessage={errors.creature_size?.message}
             />
           )}
         />
-        <FormErrorText>{errors.creature_size?.message}</FormErrorText>
       </View>
 
       <View style={styles.section}>
@@ -264,7 +312,11 @@ export const RaceForm: React.FC<RaceFormProps> = ({
             render={({ field: { value, onChange, onBlur } }) => (
               <TextInput
                 value={value?.toString() ?? ''}
-                onChangeText={(text) => onChange(Number.parseInt(text, 10) || 0)}
+                onChangeText={(text) => {
+                  const numericText = text.replace(/[^0-9]/g, '');
+                  const numeric = Number.parseInt(numericText, 10);
+                  onChange(Number.isNaN(numeric) ? 0 : numeric);
+                }}
                 onBlur={onBlur}
                 keyboardType="numeric"
                 placeholder="30"
@@ -281,18 +333,18 @@ export const RaceForm: React.FC<RaceFormProps> = ({
           <Controller
             control={control}
             name="speed.base_speed.unit"
-            render={({ field: { value, onChange, onBlur } }) => (
-              <TextInput
+            render={({ field: { value, onChange } }) => (
+              <SelectField
+                label="Единица измерения"
+                placeholder="Выберите единицу (ft, m...)"
                 value={value}
-                onChangeText={onChange}
-                onBlur={onBlur}
-                placeholder="ft"
-                style={styles.input}
-                placeholderTextColor={colors.inputPlaceholder}
+                onChange={onChange}
+                options={lengthUnitOptions}
+                isLoading={isLengthUnitsLoading}
+                errorMessage={errors.speed?.base_speed?.unit?.message}
               />
             )}
           />
-          <FormErrorText>{errors.speed?.base_speed?.unit?.message}</FormErrorText>
         </View>
 
         <View style={styles.field}>
@@ -358,20 +410,73 @@ export const RaceForm: React.FC<RaceFormProps> = ({
         </View>
       </View>
 
-      <View style={styles.field}>
-        <Text style={styles.label}>Модификаторы характеристик</Text>
-        <Text style={styles.helperText}>
-          strength:+2, charisma:+1
-        </Text>
-        <TextInput
-          value={abilityBonuses}
-          onChangeText={setAbilityBonuses}
-          placeholder="strength:+2, charisma:+1"
-          style={styles.input}
-          placeholderTextColor={colors.inputPlaceholder}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Модификаторы характеристик</Text>
+
+        <Controller
+          control={control}
+          name="increase_modifiers"
+          render={({ field: { value, onChange } }) => {
+            const rows = value ?? [];
+
+            const handleChangeRow = (index: number, patch: Partial<(typeof rows)[number]>) => {
+              const next = [...rows];
+              next[index] = { ...next[index], ...patch };
+              onChange(next);
+            };
+
+            const handleAddRow = () => {
+              onChange([...rows, { modifier: 'strength', bonus: 0 }]);
+            };
+
+            const handleRemoveRow = (index: number) => {
+              const next = rows.filter((_, i) => i !== index);
+              onChange(next);
+            };
+
+            return (
+              <View style={{ gap: 8 }}>
+                {rows.map((row, index) => (
+                  <View key={index} style={styles.modifierRow}>
+                    <View style={{ flex: 1 }}>
+                      <SelectField
+                        label={`Характеристика ${index + 1}`}
+                        placeholder="Выберите характеристику"
+                        value={row?.modifier}
+                        onChange={(modifier) => handleChangeRow(index, { modifier })}
+                        options={ABILITY_OPTIONS}
+                        errorMessage={errors.increase_modifiers?.message}
+                      />
+                    </View>
+                    <View style={styles.bonusFieldContainer}>
+                      <Text style={styles.label}>Бонус</Text>
+                      <TextInput
+                        value={row?.bonus?.toString() ?? '0'}
+                        onChangeText={(text) => {
+                          const cleaned = text.replace(/[^0-9-]/g, '');
+                          const n = Number.parseInt(cleaned, 10);
+                          handleChangeRow(index, { bonus: Number.isNaN(n) ? 0 : n });
+                        }}
+                        keyboardType="numeric"
+                        style={styles.input}
+                        placeholderTextColor={colors.inputPlaceholder}
+                      />
+                    </View>
+                    <TouchableOpacity onPress={() => handleRemoveRow(index)}>
+                      <Text style={styles.removeButton}>✕</Text>
+                    </TouchableOpacity>
+                  </View>
+                ))}
+
+                <TouchableOpacity onPress={handleAddRow}>
+                  <Text style={styles.addModifierText}>+ Добавить модификатор</Text>
+                </TouchableOpacity>
+
+                <FormErrorText>{errors.increase_modifiers?.message}</FormErrorText>
+              </View>
+            );
+          }}
         />
-        {/* TODO: parse ability bonuses from text with better UX */}
-        <FormErrorText>{errors.increase_modifiers?.message}</FormErrorText>
       </View>
 
       <View style={styles.field}>
@@ -379,18 +484,18 @@ export const RaceForm: React.FC<RaceFormProps> = ({
         <Controller
           control={control}
           name="source_id"
-          render={({ field: { value, onChange, onBlur } }) => (
-            <TextInput
+          render={({ field: { value, onChange } }) => (
+            <SelectField
+              label="Источник"
+              placeholder="Выберите источник"
               value={value}
-              onChangeText={onChange}
-              onBlur={onBlur}
-              placeholder="UUID источника"
-              style={styles.input}
-              placeholderTextColor={colors.inputPlaceholder}
+              onChange={onChange}
+              options={sourceOptions}
+              isLoading={isSourcesLoading}
+              errorMessage={errors.source_id?.message}
             />
           )}
         />
-        <FormErrorText>{errors.source_id?.message}</FormErrorText>
       </View>
 
       {/* TODO: добавить форму для особенностей */}
@@ -438,5 +543,22 @@ const styles = StyleSheet.create({
   helperText: {
     color: colors.textSecondary,
     fontSize: 12,
+  },
+  modifierRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  addModifierText: {
+    color: colors.buttonPrimary,
+    fontWeight: '600',
+  },
+  removeButton: {
+    color: colors.error,
+    fontSize: 16,
+    paddingHorizontal: 4,
+  },
+  bonusFieldContainer: {
+    width: 90,
   },
 });
