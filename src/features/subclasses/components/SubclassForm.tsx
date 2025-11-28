@@ -2,14 +2,16 @@ import React from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { StyleSheet, Text, TextInput, View } from 'react-native';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { createSubclass } from '@/features/subclasses/api/createSubclass';
 import { updateSubclass } from '@/features/subclasses/api/updateSubclass';
 import { SubclassCreateSchema, type SubclassCreateInput } from '@/features/subclasses/api/types';
+import { getClasses } from '@/features/classes/api/getClasses';
 import { FormErrorText } from '@/shared/forms/FormErrorText';
 import { FormScreenLayout } from '@/shared/forms/FormScreenLayout';
 import { FormSubmitButton } from '@/shared/forms/FormSubmitButton';
+import { SelectField, type SelectOption } from '@/shared/forms/SelectField';
 import { colors } from '@/shared/theme/colors';
 
 type SubclassFormMode = 'create' | 'edit';
@@ -20,6 +22,8 @@ interface SubclassFormProps {
   initialValues?: SubclassCreateInput;
   onSuccess?: () => void;
   submitLabel?: string;
+  showBackButton?: boolean;
+  onBackPress?: () => void;
 }
 
 const defaultValues: SubclassCreateInput = {
@@ -35,8 +39,24 @@ export const SubclassForm: React.FC<SubclassFormProps> = ({
   initialValues,
   onSuccess,
   submitLabel,
+  showBackButton,
+  onBackPress,
 }) => {
   const queryClient = useQueryClient();
+
+  const { data: classes, isLoading: isClassesLoading } = useQuery({
+    queryKey: ['classes'],
+    queryFn: getClasses,
+  });
+
+  const classOptions = React.useMemo<SelectOption[]>(
+    () =>
+      (classes ?? []).map((classItem) => ({
+        value: classItem.class_id,
+        label: classItem.name,
+      })),
+    [classes],
+  );
 
   const formDefaultValues = initialValues ?? defaultValues;
 
@@ -106,26 +126,29 @@ export const SubclassForm: React.FC<SubclassFormProps> = ({
   const formTitle = mode === 'edit' ? 'Редактировать подкласс' : 'Создать подкласс';
 
   return (
-    <FormScreenLayout title={formTitle}>
+    <FormScreenLayout
+      title={formTitle}
+      showBackButton={showBackButton}
+      onBackPress={onBackPress}
+    >
       {submitError ? <Text style={styles.errorText}>{submitError}</Text> : null}
 
       <View style={styles.field}>
-        <Text style={styles.label}>UUID класса</Text>
         <Controller
           control={control}
           name="class_id"
-          render={({ field: { value, onChange, onBlur } }) => (
-            <TextInput
-              value={value}
-              onChangeText={onChange}
-              onBlur={onBlur}
-              placeholder="c7b15d1c-1234-4c3e-8f9e-abcdef012345"
-              style={styles.input}
-              placeholderTextColor={colors.inputPlaceholder}
+          render={({ field: { value, onChange } }) => (
+            <SelectField
+              label="Класс"
+              placeholder="Выберите класс"
+              value={value || null}
+              onChange={onChange}
+              options={classOptions}
+              isLoading={isClassesLoading}
+              errorMessage={errors.class_id?.message}
             />
           )}
         />
-        <FormErrorText>{errors.class_id?.message}</FormErrorText>
       </View>
 
       <View style={styles.field}>

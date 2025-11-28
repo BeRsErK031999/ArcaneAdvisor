@@ -5,5 +5,11 @@ import { SubclassForm } from '@/features/subclasses/components/SubclassForm';
 
 export default function SubclassCreateScreen() {
   const router = useRouter();
-  return <SubclassForm onSuccess={() => router.replace('/(tabs)/library/subclasses')} />;
+  return (
+    <SubclassForm
+      showBackButton
+      onBackPress={() => router.back()}
+      onSuccess={() => router.replace('/(tabs)/library/subclasses')}
+    />
+  );
 }
