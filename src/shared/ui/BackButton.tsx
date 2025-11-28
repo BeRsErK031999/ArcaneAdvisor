@@ -17,7 +17,11 @@ export function BackButton({ onPressOverride }: BackButtonProps) {
       return;
     }
 
-    router.back();
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace("/");
+    }
   };
 
   return (
