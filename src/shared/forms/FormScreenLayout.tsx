@@ -12,6 +12,7 @@ interface FormScreenLayoutProps {
   children: React.ReactNode;
   showBackButton?: boolean;
   onBackPress?: () => void;
+  leftAction?: React.ReactNode;
 }
 
 export const FormScreenLayout: React.FC<FormScreenLayoutProps> = ({
@@ -20,11 +21,18 @@ export const FormScreenLayout: React.FC<FormScreenLayoutProps> = ({
   children,
   showBackButton = false,
   onBackPress,
+  leftAction,
 }) => {
+  const renderLeftAction = React.useMemo(() => {
+    if (leftAction) return leftAction;
+    if (showBackButton) return <BackButton onPressOverride={onBackPress} />;
+    return null;
+  }, [leftAction, onBackPress, showBackButton]);
+
   return (
     <ScreenContainer>
       <View style={styles.headerRow}>
-        {showBackButton ? <BackButton onPressOverride={onBackPress} /> : null}
+        {renderLeftAction}
         <TitleText style={styles.title}>{title}</TitleText>
       </View>
       {subtitle ? <BodyText style={styles.subtitle}>{subtitle}</BodyText> : null}

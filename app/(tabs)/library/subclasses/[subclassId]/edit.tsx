@@ -72,6 +72,8 @@ export default function SubclassEditScreen() {
       mode="edit"
       subclassId={subclassId}
       initialValues={initialValues}
+      showBackButton
+      onBackPress={() => router.back()}
       onSuccess={() =>
         router.replace({
           pathname: '/(tabs)/library/subclasses',
