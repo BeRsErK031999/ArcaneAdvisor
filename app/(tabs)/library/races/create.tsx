@@ -1,13 +1,24 @@
 import React from 'react';
 import { useRouter } from 'expo-router';
-import { RaceForm } from '@/features/races/components/RaceForm';
 
-export default function RaceCreateScreen() {
+import { RaceForm } from '@/features/races/components/RaceForm';
+import { ScreenContainer } from '@/shared/ui/ScreenContainer';
+
+export default function CreateRaceScreen() {
   const router = useRouter();
 
-  const handleSuccess = () => {
-    router.replace('/(tabs)/library/races');
-  };
-
-  return <RaceForm onSuccess={handleSuccess} />;
+  return (
+    <ScreenContainer>
+      <RaceForm
+        mode="create"
+        onSuccess={() => {
+          if (router.canGoBack()) {
+            router.back();
+          } else {
+            router.replace('/(tabs)/library/races');
+          }
+        }}
+      />
+    </ScreenContainer>
+  );
 }
