@@ -1,22 +1,22 @@
 import React from 'react';
-import { useLocalSearchParams } from 'expo-router';
 import { Text } from 'react-native';
+import { useLocalSearchParams } from 'expo-router';
 
-import { RaceDetails } from '@/features/races/components/RaceDetails';
+import { SubraceDetails } from '@/features/subraces/components/SubraceDetails';
 import { ScreenContainer } from '@/shared/ui/ScreenContainer';
 import { BackButton } from '@/shared/ui/BackButton';
 import { colors } from '@/shared/theme/colors';
 
-export default function RaceDetailsScreen() {
-  const params = useLocalSearchParams<{ raceId?: string }>();
-  const raceId = params.raceId;
+export default function SubraceDetailsScreen() {
+  const params = useLocalSearchParams<{ subraceId?: string }>();
+  const subraceId = params.subraceId;
 
-  if (!raceId) {
+  if (!subraceId) {
     return (
       <ScreenContainer>
         <BackButton />
         <Text style={{ color: colors.error, marginTop: 16 }}>
-          Не передан идентификатор расы.
+          Не передан идентификатор подрасы.
         </Text>
       </ScreenContainer>
     );
@@ -25,7 +25,7 @@ export default function RaceDetailsScreen() {
   return (
     <ScreenContainer>
       <BackButton />
-      <RaceDetails raceId={raceId} />
+      <SubraceDetails subraceId={subraceId} />
     </ScreenContainer>
   );
 }

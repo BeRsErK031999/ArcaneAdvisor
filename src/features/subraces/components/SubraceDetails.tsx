@@ -3,41 +3,41 @@ import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View
 import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 
-import { getRaceById } from '@/features/races/api/getRaceById';
-import type { Race } from '@/features/races/api/types';
+import { getSubraceById } from '@/features/subraces/api/getSubraceById';
+import type { Subrace } from '@/features/subraces/api/types';
 import { colors } from '@/shared/theme/colors';
 
-interface RaceDetailsProps {
-  raceId: string;
+interface SubraceDetailsProps {
+  subraceId: string;
 }
 
-export const RaceDetails: React.FC<RaceDetailsProps> = ({ raceId }) => {
+export const SubraceDetails: React.FC<SubraceDetailsProps> = ({ subraceId }) => {
   const router = useRouter();
   const {
-    data: race,
+    data: subrace,
     isLoading,
     isError,
     error,
     refetch,
-  } = useQuery<Race>({
-    queryKey: ['races', raceId],
-    queryFn: () => getRaceById(raceId),
+  } = useQuery<Subrace>({
+    queryKey: ['subraces', subraceId],
+    queryFn: () => getSubraceById(subraceId),
   });
 
   if (isLoading) {
     return (
       <View style={styles.centered}>
         <ActivityIndicator size="large" color={colors.textSecondary} />
-        <Text style={[styles.helperText, { color: colors.textSecondary }]}>Загружаю расу...</Text>
+        <Text style={[styles.helperText, { color: colors.textSecondary }]}>Загружаю подрасу...</Text>
       </View>
     );
   }
 
   if (isError) {
-    console.error('Error loading race:', error);
+    console.error('Error loading subrace:', error);
     return (
       <View style={styles.centered}>
-        <Text style={[styles.helperText, { color: colors.error }]}>Ошибка при загрузке расы.</Text>
+        <Text style={[styles.helperText, { color: colors.error }]}>Ошибка при загрузке подрасы.</Text>
         <Text
           onPress={() => refetch()}
           style={{ color: colors.buttonPrimary, textDecorationLine: 'underline' }}
@@ -48,30 +48,30 @@ export const RaceDetails: React.FC<RaceDetailsProps> = ({ raceId }) => {
     );
   }
 
-  if (!race) {
+  if (!subrace) {
     return (
       <View style={styles.centered}>
-        <Text style={[styles.helperText, { color: colors.textSecondary }]}>Раса не найдена.</Text>
+        <Text style={[styles.helperText, { color: colors.textSecondary }]}>Подраса не найдена.</Text>
       </View>
     );
   }
 
-  const modifiersText = race.increase_modifiers
-    .map((m) => `${m.modifier} +${m.bonus}`)
+  const modifiersText = subrace.increase_modifiers
+    .map((modifier) => `${modifier.modifier} +${modifier.bonus}`)
     .join(', ');
 
   return (
     <ScrollView contentContainerStyle={styles.content}>
       <View>
-        <Text style={styles.title}>{race.name}</Text>
-        <Text style={styles.subtitle}>{race.name_in_english}</Text>
+        <Text style={styles.title}>{subrace.name}</Text>
+        <Text style={styles.subtitle}>{subrace.name_in_english}</Text>
       </View>
 
       <TouchableOpacity
         onPress={() =>
           router.push({
-            pathname: '/(tabs)/library/races/[raceId]/edit',
-            params: { raceId: race.race_id },
+            pathname: '/(tabs)/library/subraces/[subraceId]/edit',
+            params: { subraceId: subrace.subrace_id },
           })
         }
         style={styles.editButton}
@@ -80,24 +80,8 @@ export const RaceDetails: React.FC<RaceDetailsProps> = ({ raceId }) => {
       </TouchableOpacity>
 
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Тип и размер</Text>
-        <Text style={styles.sectionValue}>
-          {race.creature_type}, {race.creature_size}
-        </Text>
-      </View>
-
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Скорость</Text>
-        <Text style={styles.sectionValue}>
-          {race.speed.base_speed.count} {race.speed.base_speed.unit}
-        </Text>
-        {race.speed.description ? <Text style={styles.helperText}>{race.speed.description}</Text> : null}
-      </View>
-
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Возраст</Text>
-        <Text style={styles.sectionValue}>Максимальный возраст: {race.age.max_age}</Text>
-        {race.age.description ? <Text style={styles.helperText}>{race.age.description}</Text> : null}
+        <Text style={styles.sectionTitle}>Родительская раса</Text>
+        <Text style={styles.sectionValue}>{subrace.race_id}</Text>
       </View>
 
       <View style={styles.section}>
@@ -107,10 +91,10 @@ export const RaceDetails: React.FC<RaceDetailsProps> = ({ raceId }) => {
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Особенности</Text>
-        {race.features.length === 0 ? (
-          <Text style={styles.helperText}>Нет явных особенностей.</Text>
+        {subrace.features.length === 0 ? (
+          <Text style={styles.helperText}>Особенности не указаны.</Text>
         ) : (
-          race.features.map((feature) => (
+          subrace.features.map((feature) => (
             <View key={feature.name} style={styles.featureItem}>
               <Text style={styles.featureTitle}>{feature.name}</Text>
               <Text style={styles.sectionValue}>{feature.description}</Text>
@@ -121,7 +105,7 @@ export const RaceDetails: React.FC<RaceDetailsProps> = ({ raceId }) => {
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Описание</Text>
-        <Text style={styles.sectionValue}>{race.description}</Text>
+        <Text style={styles.sectionValue}>{subrace.description}</Text>
       </View>
     </ScrollView>
   );

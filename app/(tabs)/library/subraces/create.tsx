@@ -2,8 +2,23 @@ import React from 'react';
 import { useRouter } from 'expo-router';
 
 import { SubraceForm } from '@/features/subraces/components/SubraceForm';
+import { ScreenContainer } from '@/shared/ui/ScreenContainer';
 
-export default function SubraceCreateScreen() {
+export default function CreateSubraceScreen() {
   const router = useRouter();
-  return <SubraceForm onSuccess={() => router.replace('/(tabs)/library/subraces')} />;
+
+  return (
+    <ScreenContainer>
+      <SubraceForm
+        mode="create"
+        onSuccess={() => {
+          if (router.canGoBack()) {
+            router.back();
+          } else {
+            router.replace('/(tabs)/library/subraces');
+          }
+        }}
+      />
+    </ScreenContainer>
+  );
 }
