@@ -112,6 +112,11 @@ export function WeaponForm({
   const damageTypesQuery = useQuery({ queryKey: ['damage-types'], queryFn: getDamageTypes });
   const weightUnitsQuery = useQuery({ queryKey: ['weight-units'], queryFn: getWeightUnits });
 
+  const hasWeaponKinds = (weaponKindsQuery.data?.length ?? 0) > 0;
+  const hasMaterials = (materialsQuery.data?.length ?? 0) > 0;
+
+  const canCreateWeapon = hasWeaponKinds && hasMaterials;
+
   const isLoadingDictionaries =
     weaponKindsQuery.isLoading ||
     weaponPropertiesQuery.isLoading ||
@@ -303,6 +308,58 @@ export function WeaponForm({
 
   const isSubmitting = createMutation.isPending || updateMutation.isPending;
   const formTitle = mode === 'edit' ? 'Редактировать оружие' : 'Создать оружие';
+
+  if (!canCreateWeapon) {
+    return (
+      <FormScreenLayout
+        title={formTitle}
+        showBackButton={showBackButton}
+        onBackPress={() => router.back()}
+      >
+        <View style={styles.missingBlock}>
+          <BodyText style={styles.sectionTitle}>Нельзя создать оружие</BodyText>
+
+          <BodyText style={styles.helperText}>
+            Для создания оружия нужны базовые справочники. Сейчас отсутствуют:
+          </BodyText>
+
+          {!hasWeaponKinds && (
+            <BodyText style={styles.missingItem}>
+              • Виды оружия (Weapon Kinds) — создайте хотя бы один тип оружия.
+            </BodyText>
+          )}
+
+          {!hasMaterials && (
+            <BodyText style={styles.missingItem}>
+              • Материалы (Materials) — добавьте материалы в базе.
+            </BodyText>
+          )}
+
+          <View style={styles.actionsRow}>
+            {!hasWeaponKinds && (
+              <Pressable
+                style={styles.primaryButton}
+                onPress={() =>
+                  router.push('/(tabs)/library/equipment/weapon-kinds/create')
+                }
+              >
+                <BodyText style={styles.primaryButtonText}>Создать вид оружия</BodyText>
+              </Pressable>
+            )}
+
+            {!hasMaterials && (
+              <Pressable
+                style={styles.secondaryButton}
+                onPress={() => router.push('/(tabs)/library/equipment/materials')}
+              >
+                <BodyText style={styles.secondaryButtonText}>Открыть материалы</BodyText>
+              </Pressable>
+            )}
+          </View>
+        </View>
+      </FormScreenLayout>
+    );
+  }
 
   return (
     <FormScreenLayout title={formTitle} showBackButton={showBackButton}>
@@ -697,5 +754,45 @@ const styles = StyleSheet.create({
   },
   horizontalChips: {
     marginHorizontal: -4,
+  },
+  missingBlock: {
+    gap: 12,
+    padding: 16,
+    borderRadius: 8,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.borderMuted,
+  },
+  missingItem: {
+    fontSize: 14,
+    color: colors.textPrimary,
+  },
+  actionsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 8,
+  },
+  primaryButton: {
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    backgroundColor: colors.buttonPrimary,
+  },
+  primaryButtonText: {
+    color: colors.buttonPrimaryText,
+    fontWeight: '600',
+  },
+  secondaryButton: {
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.borderMuted,
+    backgroundColor: colors.surface,
+  },
+  secondaryButtonText: {
+    color: colors.textPrimary,
+    fontWeight: '500',
   },
 });
