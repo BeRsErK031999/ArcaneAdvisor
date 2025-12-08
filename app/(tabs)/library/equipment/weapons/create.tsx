@@ -25,7 +25,7 @@ export default function WeaponCreateScreen() {
   });
   const weaponPropertiesQuery = useQuery({
     queryKey: ['weapon-properties'],
-    queryFn: getWeaponProperties,
+    queryFn: () => getWeaponProperties(),
   });
   const materialsQuery = useQuery({ queryKey: ['materials'], queryFn: getMaterials });
   const pieceTypesQuery = useQuery({ queryKey: ['piece-types'], queryFn: getPieceTypes });

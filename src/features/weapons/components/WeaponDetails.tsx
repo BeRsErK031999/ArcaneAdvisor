@@ -16,6 +16,7 @@ import type { Weapon } from '@/features/weapons/api/types';
 import { getWeaponKinds } from '@/features/weapon-kinds/api/getWeaponKinds';
 import type { WeaponKind } from '@/features/weapon-kinds/api/types';
 import { getWeaponProperties } from '@/features/weapon-properties/api/getWeaponProperties';
+import type { WeaponProperty } from '@/features/weapon-properties/api/types';
 import { getDamageTypes } from '@/features/dictionaries/api/getDamageTypes';
 import { getDiceTypes } from '@/features/dictionaries/api/getDiceTypes';
 import { getWeightUnits } from '@/features/dictionaries/api/getWeightUnits';
@@ -52,9 +53,9 @@ export function WeaponDetails({ weaponId }: WeaponDetailsProps) {
     queryKey: ['weapon-kinds'],
     queryFn: () => getWeaponKinds(),
   });
-  const weaponPropertiesQuery = useQuery({
+  const weaponPropertiesQuery = useQuery<WeaponProperty[], Error>({
     queryKey: ['weapon-properties'],
-    queryFn: getWeaponProperties,
+    queryFn: () => getWeaponProperties(),
   });
   const damageTypesQuery = useQuery({ queryKey: ['damage-types'], queryFn: getDamageTypes });
   const diceTypesQuery = useQuery({ queryKey: ['dice-types'], queryFn: getDiceTypes });
