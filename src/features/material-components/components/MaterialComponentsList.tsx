@@ -1,9 +1,20 @@
 import React from 'react';
-import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import {
+  ActivityIndicator,
+  FlatList,
+  Pressable,
+  RefreshControl,
+  StyleSheet,
+  View,
+} from 'react-native';
 import { useQuery } from '@tanstack/react-query';
+import { Link, type Href } from 'expo-router';
 
 import { getMaterialComponents } from '@/features/material-components/api/getMaterialComponents';
 import type { MaterialComponent } from '@/features/material-components/api/types';
+import { colors } from '@/shared/theme/colors';
+import { ScreenContainer } from '@/shared/ui/ScreenContainer';
+import { BodyText, SubtitleText, TitleText } from '@/shared/ui/Typography';
 
 function formatCost(cost: MaterialComponent['cost']) {
   if (!cost) return 'Стоимость: —';
@@ -15,127 +26,173 @@ function formatMaterial(materialId: MaterialComponent['material_id']) {
 }
 
 export function MaterialComponentsList() {
-  const { data, isLoading, isError, error, refetch, isRefetching } = useQuery({
+  const { data, isLoading, isError, error, refetch, isRefetching } = useQuery<
+    MaterialComponent[],
+    Error
+  >({
     queryKey: ['material-components'],
     queryFn: getMaterialComponents,
   });
 
-  if (isLoading) {
-    return (
-      <View style={styles.centered}>
-        <ActivityIndicator />
-        <Text style={styles.helperText}>Загружаю материальные компоненты…</Text>
-      </View>
-    );
-  }
+  const materialComponents = data ?? [];
 
-  if (isError) {
-    console.error('Failed to load material components:', error);
-    return (
-      <View style={styles.centered}>
-        <Text style={styles.errorText}>Ошибка при загрузке компонент</Text>
-        <Text style={styles.linkText} onPress={() => refetch()}>
-          Повторить
-        </Text>
-      </View>
-    );
-  }
-
-  if (!data || data.length === 0) {
-    return (
-      <View style={styles.centered}>
-        <Text style={styles.helperText}>Материальных компонент пока нет</Text>
-      </View>
-    );
-  }
-
-  const renderItem = ({ item }: { item: MaterialComponent }) => (
-    <TouchableOpacity style={styles.card}>
-      <View style={styles.cardHeader}>
-        <Text style={styles.name}>{item.name}</Text>
-        <Text style={styles.type}>{item.consumed ? 'расходуется' : 'не расходуется'}</Text>
-      </View>
-      <Text style={styles.meta}>{formatMaterial(item.material_id)}</Text>
-      <Text style={styles.meta}>{formatCost(item.cost)}</Text>
-      <Text style={styles.description} numberOfLines={3}>
-        {item.description}
-      </Text>
-    </TouchableOpacity>
-  );
+  const showList = !isLoading && !isError && materialComponents.length > 0;
+  const showEmpty = !isLoading && !isError && materialComponents.length === 0;
 
   return (
-    <FlatList
-      data={data}
-      keyExtractor={(item) => item.material_component_id}
-      renderItem={renderItem}
-      refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} />}
-      contentContainerStyle={styles.listContainer}
-      ItemSeparatorComponent={() => <View style={styles.separator} />}
-    />
+    <ScreenContainer>
+      <TitleText>Материальные компоненты</TitleText>
+
+      {isLoading && (
+        <View style={styles.centered}>
+          <ActivityIndicator color={colors.textSecondary} />
+          <BodyText style={styles.helperText}>Загружаю материальные компоненты…</BodyText>
+        </View>
+      )}
+
+      {isError && (
+        <View style={styles.centered}>
+          <BodyText style={[styles.helperText, styles.errorText]}>
+            Не удалось загрузить материальные компоненты
+          </BodyText>
+          <BodyText style={styles.errorDetails}>{error?.message}</BodyText>
+
+          <Pressable style={styles.retryButton} onPress={() => refetch()}>
+            <BodyText style={styles.retryButtonText}>Повторить</BodyText>
+          </Pressable>
+        </View>
+      )}
+
+      {showEmpty && (
+        <View style={styles.centered}>
+          <BodyText style={styles.helperText}>Материальных компонент пока нет</BodyText>
+        </View>
+      )}
+
+      {showList && (
+        <FlatList
+          data={materialComponents}
+          keyExtractor={(item) => item.material_component_id}
+          renderItem={({ item }) => <MaterialComponentListItem component={item} />}
+          contentContainerStyle={styles.listContainer}
+          ItemSeparatorComponent={() => <View style={styles.separator} />}
+          refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} />}
+        />
+      )}
+    </ScreenContainer>
+  );
+}
+
+type MaterialComponentListItemProps = {
+  component: MaterialComponent;
+};
+
+function MaterialComponentListItem({ component }: MaterialComponentListItemProps) {
+  const href = {
+    pathname: '/(tabs)/library/equipment/material-components/[materialComponentId]',
+    params: { materialComponentId: String(component.material_component_id) },
+  } satisfies Href;
+
+  return (
+    <Link href={href} asChild>
+      <Pressable style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}>
+        <View style={styles.cardHeader}>
+          <BodyText style={styles.name}>{component.name}</BodyText>
+          <SubtitleText style={styles.consumed}>
+            {component.consumed ? 'расходуется' : 'не расходуется'}
+          </SubtitleText>
+        </View>
+
+        <BodyText style={styles.meta}>{formatMaterial(component.material_id)}</BodyText>
+        <BodyText style={styles.meta}>{formatCost(component.cost)}</BodyText>
+
+        {component.description ? (
+          <BodyText style={styles.description} numberOfLines={2}>
+            {component.description}
+          </BodyText>
+        ) : null}
+      </Pressable>
+    </Link>
   );
 }
 
 const styles = StyleSheet.create({
   centered: {
-    flex: 1,
+    marginTop: 32,
     alignItems: 'center',
-    justifyContent: 'center',
-    padding: 24,
+    rowGap: 12,
   },
   helperText: {
     marginTop: 8,
-    fontSize: 16,
-  },
-  errorText: {
-    color: 'red',
-    fontSize: 16,
-    marginBottom: 12,
+    fontSize: 14,
+    color: colors.textSecondary,
     textAlign: 'center',
   },
-  linkText: {
-    color: '#2563eb',
-    fontSize: 16,
+  errorText: {
+    color: colors.error,
+    fontWeight: '600',
+  },
+  errorDetails: {
+    marginTop: 4,
+    fontSize: 12,
+    color: colors.textMuted,
+    textAlign: 'center',
+  },
+  retryButton: {
+    marginTop: 16,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    backgroundColor: colors.buttonSecondary,
+    borderWidth: 1,
+    borderColor: colors.borderMuted,
+  },
+  retryButtonText: {
+    color: colors.buttonSecondaryText,
+    fontWeight: '500',
   },
   listContainer: {
-    padding: 16,
+    paddingBottom: 24,
+    rowGap: 12,
   },
   separator: {
     height: 12,
   },
   card: {
-    backgroundColor: '#fff',
-    borderRadius: 8,
+    backgroundColor: colors.surface,
+    borderRadius: 10,
     padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    borderWidth: 1,
+    borderColor: colors.borderMuted,
+  },
+  cardPressed: {
+    backgroundColor: colors.surfaceElevated,
   },
   cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 4,
+    marginBottom: 6,
   },
   name: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '600',
+    color: colors.textPrimary,
     flex: 1,
     marginRight: 8,
   },
-  type: {
-    fontSize: 14,
-    color: '#6b7280',
+  consumed: {
+    color: colors.textSecondary,
+    fontSize: 13,
   },
   meta: {
-    fontSize: 14,
-    color: '#374151',
+    fontSize: 13,
+    color: colors.textSecondary,
     marginBottom: 4,
   },
   description: {
     fontSize: 14,
-    color: '#111827',
-    marginTop: 4,
+    color: colors.textPrimary,
+    marginTop: 8,
   },
 });

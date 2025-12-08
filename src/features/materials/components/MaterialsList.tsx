@@ -1,9 +1,20 @@
 import React from 'react';
-import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import {
+  ActivityIndicator,
+  FlatList,
+  Pressable,
+  RefreshControl,
+  StyleSheet,
+  View,
+} from 'react-native';
 import { useQuery } from '@tanstack/react-query';
+import { Link, type Href } from 'expo-router';
 
 import { getMaterials } from '@/features/materials/api/getMaterials';
 import type { Material } from '@/features/materials/api/types';
+import { colors } from '@/shared/theme/colors';
+import { ScreenContainer } from '@/shared/ui/ScreenContainer';
+import { BodyText, SubtitleText, TitleText } from '@/shared/ui/Typography';
 
 function formatWeight(weight: Material['weight']) {
   if (!weight) return 'Вес: —';
@@ -16,127 +27,171 @@ function formatCost(cost: Material['cost']) {
 }
 
 export function MaterialsList() {
-  const { data, isLoading, isError, error, refetch, isRefetching } = useQuery({
+  const { data, isLoading, isError, error, refetch, isRefetching } = useQuery<
+    Material[],
+    Error
+  >({
     queryKey: ['materials'],
     queryFn: getMaterials,
   });
 
-  if (isLoading) {
-    return (
-      <View style={styles.centered}>
-        <ActivityIndicator />
-        <Text style={styles.helperText}>Загружаю материалы…</Text>
-      </View>
-    );
-  }
+  const materials = data ?? [];
 
-  if (isError) {
-    console.error('Failed to load materials:', error);
-    return (
-      <View style={styles.centered}>
-        <Text style={styles.errorText}>Ошибка при загрузке материалов</Text>
-        <Text style={styles.linkText} onPress={() => refetch()}>
-          Повторить
-        </Text>
-      </View>
-    );
-  }
-
-  if (!data || data.length === 0) {
-    return (
-      <View style={styles.centered}>
-        <Text style={styles.helperText}>Материалов пока нет</Text>
-      </View>
-    );
-  }
-
-  const renderItem = ({ item }: { item: Material }) => (
-    <TouchableOpacity style={styles.card}>
-      <View style={styles.cardHeader}>
-        <Text style={styles.name}>{item.name}</Text>
-        <Text style={styles.type}>{item.rarity}</Text>
-      </View>
-      <Text style={styles.meta}>{formatWeight(item.weight)}</Text>
-      <Text style={styles.meta}>{formatCost(item.cost)}</Text>
-      <Text style={styles.description} numberOfLines={3}>
-        {item.description}
-      </Text>
-    </TouchableOpacity>
-  );
+  const showList = !isLoading && !isError && materials.length > 0;
+  const showEmpty = !isLoading && !isError && materials.length === 0;
 
   return (
-    <FlatList
-      data={data}
-      keyExtractor={(item) => item.material_id}
-      renderItem={renderItem}
-      refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} />}
-      contentContainerStyle={styles.listContainer}
-      ItemSeparatorComponent={() => <View style={styles.separator} />}
-    />
+    <ScreenContainer>
+      <TitleText>Материалы</TitleText>
+
+      {isLoading && (
+        <View style={styles.centered}>
+          <ActivityIndicator color={colors.textSecondary} />
+          <BodyText style={styles.helperText}>Загружаю материалы…</BodyText>
+        </View>
+      )}
+
+      {isError && (
+        <View style={styles.centered}>
+          <BodyText style={[styles.helperText, styles.errorText]}>
+            Не удалось загрузить материалы
+          </BodyText>
+          <BodyText style={styles.errorDetails}>{error?.message}</BodyText>
+
+          <Pressable style={styles.retryButton} onPress={() => refetch()}>
+            <BodyText style={styles.retryButtonText}>Повторить</BodyText>
+          </Pressable>
+        </View>
+      )}
+
+      {showEmpty && (
+        <View style={styles.centered}>
+          <BodyText style={styles.helperText}>Материалов пока нет</BodyText>
+        </View>
+      )}
+
+      {showList && (
+        <FlatList
+          data={materials}
+          keyExtractor={(item) => item.material_id}
+          renderItem={({ item }) => <MaterialListItem material={item} />}
+          contentContainerStyle={styles.listContainer}
+          ItemSeparatorComponent={() => <View style={styles.separator} />}
+          refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} />}
+        />
+      )}
+    </ScreenContainer>
+  );
+}
+
+type MaterialListItemProps = {
+  material: Material;
+};
+
+function MaterialListItem({ material }: MaterialListItemProps) {
+  const href = {
+    pathname: '/(tabs)/library/equipment/materials/[materialId]',
+    params: { materialId: String(material.material_id) },
+  } satisfies Href;
+
+  return (
+    <Link href={href} asChild>
+      <Pressable style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}>
+        <View style={styles.cardHeader}>
+          <BodyText style={styles.name}>{material.name}</BodyText>
+          <SubtitleText style={styles.rarity}>{material.rarity}</SubtitleText>
+        </View>
+
+        <BodyText style={styles.meta}>{formatWeight(material.weight)}</BodyText>
+        <BodyText style={styles.meta}>{formatCost(material.cost)}</BodyText>
+
+        {material.description ? (
+          <BodyText style={styles.description} numberOfLines={2}>
+            {material.description}
+          </BodyText>
+        ) : null}
+      </Pressable>
+    </Link>
   );
 }
 
 const styles = StyleSheet.create({
   centered: {
-    flex: 1,
+    marginTop: 32,
     alignItems: 'center',
-    justifyContent: 'center',
-    padding: 24,
+    rowGap: 12,
   },
   helperText: {
     marginTop: 8,
-    fontSize: 16,
-  },
-  errorText: {
-    color: 'red',
-    fontSize: 16,
-    marginBottom: 12,
+    fontSize: 14,
+    color: colors.textSecondary,
     textAlign: 'center',
   },
-  linkText: {
-    color: '#2563eb',
-    fontSize: 16,
+  errorText: {
+    color: colors.error,
+    fontWeight: '600',
+  },
+  errorDetails: {
+    marginTop: 4,
+    fontSize: 12,
+    color: colors.textMuted,
+    textAlign: 'center',
+  },
+  retryButton: {
+    marginTop: 16,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    backgroundColor: colors.buttonSecondary,
+    borderWidth: 1,
+    borderColor: colors.borderMuted,
+  },
+  retryButtonText: {
+    color: colors.buttonSecondaryText,
+    fontWeight: '500',
   },
   listContainer: {
-    padding: 16,
+    paddingBottom: 24,
+    rowGap: 12,
   },
   separator: {
     height: 12,
   },
   card: {
-    backgroundColor: '#fff',
-    borderRadius: 8,
+    backgroundColor: colors.surface,
+    borderRadius: 10,
     padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    borderWidth: 1,
+    borderColor: colors.borderMuted,
+  },
+  cardPressed: {
+    backgroundColor: colors.surfaceElevated,
   },
   cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 4,
+    marginBottom: 6,
   },
   name: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '600',
+    color: colors.textPrimary,
     flex: 1,
     marginRight: 8,
   },
-  type: {
-    fontSize: 14,
-    color: '#6b7280',
+  rarity: {
+    color: colors.textSecondary,
+    fontSize: 13,
   },
   meta: {
-    fontSize: 14,
-    color: '#374151',
+    fontSize: 13,
+    color: colors.textSecondary,
     marginBottom: 4,
   },
   description: {
     fontSize: 14,
-    color: '#111827',
-    marginTop: 4,
+    color: colors.textPrimary,
+    marginTop: 8,
   },
 });
