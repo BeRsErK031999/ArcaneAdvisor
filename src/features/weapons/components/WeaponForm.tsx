@@ -18,6 +18,7 @@ import { createWeapon } from '@/features/weapons/api/createWeapon';
 import { updateWeapon } from '@/features/weapons/api/updateWeapon';
 import { WeaponCreateSchema, type WeaponCreateInput } from '@/features/weapons/api/types';
 import { getWeaponKinds } from '@/features/weapon-kinds/api/getWeaponKinds';
+import type { WeaponKind } from '@/features/weapon-kinds/api/types';
 import { getWeaponProperties } from '@/features/weapon-properties/api/getWeaponProperties';
 import { getMaterials } from '@/features/materials/api/getMaterials';
 import { getPieceTypes } from '@/features/dictionaries/api/getPieceTypes';
@@ -96,7 +97,10 @@ export function WeaponForm({
     setHasWeight(Boolean(initialValues?.weight));
   }, [initialValues]);
 
-  const weaponKindsQuery = useQuery({ queryKey: ['weapon-kinds'], queryFn: getWeaponKinds });
+  const weaponKindsQuery = useQuery<WeaponKind[], Error>({
+    queryKey: ['weapon-kinds'],
+    queryFn: () => getWeaponKinds(),
+  });
   const weaponPropertiesQuery = useQuery({
     queryKey: ['weapon-properties'],
     queryFn: getWeaponProperties,

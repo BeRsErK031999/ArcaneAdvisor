@@ -7,6 +7,7 @@ import { WeaponForm } from '@/features/weapons/components/WeaponForm';
 import { getWeaponById } from '@/features/weapons/api/getWeaponById';
 import type { WeaponCreateInput } from '@/features/weapons/api/types';
 import { getWeaponKinds } from '@/features/weapon-kinds/api/getWeaponKinds';
+import type { WeaponKind } from '@/features/weapon-kinds/api/types';
 import { getWeaponProperties } from '@/features/weapon-properties/api/getWeaponProperties';
 import { getMaterials } from '@/features/materials/api/getMaterials';
 import { getPieceTypes } from '@/features/dictionaries/api/getPieceTypes';
@@ -28,7 +29,10 @@ export default function WeaponEditScreen() {
     enabled: Boolean(resolvedId),
   });
 
-  const weaponKindsQuery = useQuery({ queryKey: ['weapon-kinds'], queryFn: getWeaponKinds });
+  const weaponKindsQuery = useQuery<WeaponKind[], Error>({
+    queryKey: ['weapon-kinds'],
+    queryFn: () => getWeaponKinds(),
+  });
   const weaponPropertiesQuery = useQuery({
     queryKey: ['weapon-properties'],
     queryFn: getWeaponProperties,
