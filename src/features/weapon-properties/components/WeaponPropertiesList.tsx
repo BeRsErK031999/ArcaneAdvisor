@@ -1,110 +1,204 @@
 import React from 'react';
-import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import {
+  ActivityIndicator,
+  FlatList,
+  Pressable,
+  RefreshControl,
+  StyleSheet,
+  View,
+} from 'react-native';
 import { useQuery } from '@tanstack/react-query';
+import { Link, type Href } from 'expo-router';
 
 import { getWeaponProperties } from '@/features/weapon-properties/api/getWeaponProperties';
 import type { WeaponProperty } from '@/features/weapon-properties/api/types';
+import { colors } from '@/shared/theme/colors';
+import { ScreenContainer } from '@/shared/ui/ScreenContainer';
+import { BodyText, TitleText } from '@/shared/ui/Typography';
 
 export function WeaponPropertiesList() {
-  const { data, isLoading, isError, error, refetch, isRefetching } = useQuery({
+  const { data, isLoading, isError, error, refetch, isRefetching } = useQuery<
+    WeaponProperty[],
+    Error
+  >({
     queryKey: ['weapon-properties'],
-    queryFn: getWeaponProperties,
+    queryFn: () => getWeaponProperties(),
   });
 
-  if (isLoading) {
-    return (
-      <View style={styles.centered}>
-        <ActivityIndicator />
-        <Text style={styles.helperText}>Загружаю свойства оружия…</Text>
-      </View>
-    );
-  }
+  const properties = data ?? [];
 
-  if (isError) {
-    console.error('Failed to load weapon properties:', error);
-    return (
-      <View style={styles.centered}>
-        <Text style={styles.errorText}>Ошибка при загрузке свойств оружия</Text>
-        <Text style={styles.linkText} onPress={() => refetch()}>
-          Повторить
-        </Text>
-      </View>
-    );
-  }
-
-  if (!data || data.length === 0) {
-    return (
-      <View style={styles.centered}>
-        <Text style={styles.helperText}>Свойств оружия пока нет</Text>
-      </View>
-    );
-  }
-
-  const renderItem = ({ item }: { item: WeaponProperty }) => (
-    <TouchableOpacity style={styles.card}>
-      <Text style={styles.name}>{item.name}</Text>
-      <Text style={styles.description} numberOfLines={4}>
-        {item.description}
-      </Text>
-    </TouchableOpacity>
-  );
+  const showList = !isLoading && !isError && properties.length > 0;
+  const showEmpty = !isLoading && !isError && properties.length === 0;
 
   return (
-    <FlatList
-      data={data}
-      keyExtractor={(item) => item.weapon_property_id}
-      renderItem={renderItem}
-      refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} />}
-      contentContainerStyle={styles.listContainer}
-      ItemSeparatorComponent={() => <View style={styles.separator} />}
-    />
+    <ScreenContainer>
+      <View style={styles.headerRow}>
+        <TitleText>Свойства оружия</TitleText>
+
+        <Link href="/(tabs)/library/equipment/weapon-properties/create" asChild>
+          <Pressable style={styles.createButton}>
+            <BodyText style={styles.createButtonText}>+ Создать</BodyText>
+          </Pressable>
+        </Link>
+      </View>
+
+      {isLoading && (
+        <View style={styles.centered}>
+          <ActivityIndicator color={colors.textSecondary} />
+          <BodyText style={styles.helperText}>Загружаю свойства оружия…</BodyText>
+        </View>
+      )}
+
+      {isError && (
+        <View style={styles.centered}>
+          <BodyText style={[styles.helperText, styles.errorText]}>
+            Ошибка при загрузке свойств оружия
+          </BodyText>
+          <BodyText style={styles.errorDetails}>
+            {error?.message ?? 'Неизвестная ошибка'}
+          </BodyText>
+
+          <Pressable style={styles.retryButton} onPress={() => refetch()}>
+            <BodyText style={styles.retryButtonText}>Повторить</BodyText>
+          </Pressable>
+        </View>
+      )}
+
+      {showEmpty && (
+        <View style={styles.centered}>
+          <BodyText style={styles.helperText}>Свойств оружия пока нет</BodyText>
+
+          <Link href="/(tabs)/library/equipment/weapon-properties/create" asChild>
+            <Pressable style={styles.createButtonWide}>
+              <BodyText style={styles.createButtonText}>Создать свойство</BodyText>
+            </Pressable>
+          </Link>
+        </View>
+      )}
+
+      {showList && (
+        <FlatList
+          data={properties}
+          keyExtractor={(item) => item.weapon_property_id}
+          renderItem={({ item }) => <WeaponPropertyListItem property={item} />}
+          contentContainerStyle={styles.listContainer}
+          ItemSeparatorComponent={() => <View style={styles.separator} />}
+          refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} />}
+        />
+      )}
+    </ScreenContainer>
+  );
+}
+
+type WeaponPropertyListItemProps = {
+  property: WeaponProperty;
+};
+
+function WeaponPropertyListItem({ property }: WeaponPropertyListItemProps) {
+  const href = {
+    pathname: '/(tabs)/library/equipment/weapon-properties/[weaponPropertyId]',
+    params: { weaponPropertyId: String(property.weapon_property_id) },
+  } satisfies Href;
+
+  return (
+    <Link href={href} asChild>
+      <Pressable style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}>
+        <BodyText style={styles.name}>{property.name}</BodyText>
+        <BodyText style={styles.description} numberOfLines={2}>
+          {property.description}
+        </BodyText>
+      </Pressable>
+    </Link>
   );
 }
 
 const styles = StyleSheet.create({
-  centered: {
-    flex: 1,
+  headerRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    padding: 24,
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  centered: {
+    marginTop: 32,
+    alignItems: 'center',
+    rowGap: 12,
   },
   helperText: {
-    marginTop: 8,
-    fontSize: 16,
-  },
-  errorText: {
-    color: 'red',
-    fontSize: 16,
-    marginBottom: 12,
+    marginTop: 4,
+    fontSize: 14,
+    color: colors.textSecondary,
     textAlign: 'center',
   },
-  linkText: {
-    color: '#2563eb',
-    fontSize: 16,
+  errorText: {
+    color: colors.error,
+    fontWeight: '600',
+  },
+  errorDetails: {
+    marginTop: 4,
+    fontSize: 12,
+    color: colors.textMuted,
+    textAlign: 'center',
+  },
+  retryButton: {
+    marginTop: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    backgroundColor: colors.buttonSecondary,
+    borderWidth: 1,
+    borderColor: colors.borderMuted,
+  },
+  retryButtonText: {
+    color: colors.buttonSecondaryText,
+    fontWeight: '500',
   },
   listContainer: {
-    padding: 16,
+    paddingBottom: 24,
+    rowGap: 12,
   },
   separator: {
     height: 12,
   },
   card: {
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface,
     borderRadius: 8,
     padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    borderWidth: 1,
+    borderColor: colors.borderMuted,
+    rowGap: 8,
+  },
+  cardPressed: {
+    backgroundColor: colors.surfaceElevated,
   },
   name: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '600',
-    marginBottom: 6,
+    color: colors.textPrimary,
   },
   description: {
     fontSize: 14,
-    color: '#111827',
+    color: colors.textSecondary,
+  },
+  createButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    backgroundColor: colors.buttonSecondary,
+    borderWidth: 1,
+    borderColor: colors.borderMuted,
+  },
+  createButtonWide: {
+    marginTop: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    backgroundColor: colors.buttonSecondary,
+    borderWidth: 1,
+    borderColor: colors.borderMuted,
+  },
+  createButtonText: {
+    color: colors.buttonSecondaryText,
+    fontWeight: '600',
   },
 });

@@ -20,6 +20,7 @@ import { WeaponCreateSchema, type WeaponCreateInput } from '@/features/weapons/a
 import { getWeaponKinds } from '@/features/weapon-kinds/api/getWeaponKinds';
 import type { WeaponKind } from '@/features/weapon-kinds/api/types';
 import { getWeaponProperties } from '@/features/weapon-properties/api/getWeaponProperties';
+import type { WeaponProperty } from '@/features/weapon-properties/api/types';
 import { getMaterials } from '@/features/materials/api/getMaterials';
 import { getPieceTypes } from '@/features/dictionaries/api/getPieceTypes';
 import { getDiceTypes } from '@/features/dictionaries/api/getDiceTypes';
@@ -101,9 +102,9 @@ export function WeaponForm({
     queryKey: ['weapon-kinds'],
     queryFn: () => getWeaponKinds(),
   });
-  const weaponPropertiesQuery = useQuery({
+  const weaponPropertiesQuery = useQuery<WeaponProperty[], Error>({
     queryKey: ['weapon-properties'],
-    queryFn: getWeaponProperties,
+    queryFn: () => getWeaponProperties(),
   });
   const materialsQuery = useQuery({ queryKey: ['materials'], queryFn: getMaterials });
   const pieceTypesQuery = useQuery({ queryKey: ['piece-types'], queryFn: getPieceTypes });
