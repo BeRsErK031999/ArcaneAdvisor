@@ -11,6 +11,7 @@ import { createClass } from '@/features/classes/api/createClass';
 import { updateClass } from '@/features/classes/api/updateClass';
 import { getDiceTypes } from '@/features/dictionaries/api/getDiceTypes';
 import { getSkills } from '@/features/dictionaries/api/getSkills';
+import { getModifiers } from '@/features/dictionaries/api/getModifiers';
 import { getSources } from '@/features/sources/api/getSources';
 import { getWeapons } from '@/features/weapons/api/getWeapons';
 import { getTools } from '@/features/tools/api/getTools';
@@ -54,14 +55,14 @@ const defaultValues: ClassCreateInput = {
   source_id: '',
 };
 
-const BASE_ABILITY_OPTIONS: SelectOption[] = [
-  { value: 'strength', label: 'Сила (STR)' },
-  { value: 'dexterity', label: 'Ловкость (DEX)' },
-  { value: 'constitution', label: 'Телосложение (CON)' },
-  { value: 'intelligence', label: 'Интеллект (INT)' },
-  { value: 'wisdom', label: 'Мудрость (WIS)' },
-  { value: 'charisma', label: 'Харизма (CHA)' },
-];
+const MODIFIER_CODE_MAP: Record<string, string> = {
+  strength: 'STR',
+  dexterity: 'DEX',
+  constitution: 'CON',
+  intellect: 'INT',
+  wisdom: 'WIS',
+  charisma: 'CHA',
+};
 
 export const ClassForm: React.FC<ClassFormProps> = ({
   mode = 'create',
@@ -80,39 +81,12 @@ export const ClassForm: React.FC<ClassFormProps> = ({
 
   const { errors } = formState;
   const [submitError, setSubmitError] = React.useState<string | null>(null);
-  const [customAbilityOptions, setCustomAbilityOptions] = React.useState<SelectOption[]>([]);
 
   React.useEffect(() => {
     if (initialValues) {
       reset(initialValues);
     }
   }, [initialValues, reset]);
-
-  React.useEffect(() => {
-    if (!initialValues) return;
-
-    const baseValues = new Set(BASE_ABILITY_OPTIONS.map((option) => option.value));
-    const abilityValues = [
-      ...(initialValues.primary_modifiers ?? []),
-      initialValues.hits?.hit_modifier,
-      ...(initialValues.proficiencies?.saving_throws ?? []),
-    ].filter(Boolean) as string[];
-
-    const uniqueCustom = abilityValues.filter((ability) => ability && !baseValues.has(ability));
-
-    setCustomAbilityOptions((prev) => {
-      const currentValues = new Set(prev.map((option) => option.value));
-      const newOptions = uniqueCustom
-        .filter((ability) => !currentValues.has(ability))
-        .map((ability) => ({ value: ability, label: ability }));
-
-      if (newOptions.length === 0) {
-        return prev;
-      }
-
-      return [...prev, ...newOptions];
-    });
-  }, [initialValues]);
 
   const createMutation = useMutation({
     mutationFn: createClass,
@@ -142,6 +116,11 @@ export const ClassForm: React.FC<ClassFormProps> = ({
     queryFn: getDiceTypes,
   });
 
+  const { data: modifiersDict, isLoading: isModifiersLoading } = useQuery({
+    queryKey: ['modifiers'],
+    queryFn: getModifiers,
+  });
+
   const { data: skillsDict, isLoading: isSkillsLoading } = useQuery({
     queryKey: ['skills'],
     queryFn: getSkills,
@@ -162,9 +141,19 @@ export const ClassForm: React.FC<ClassFormProps> = ({
     queryFn: getTools,
   });
 
-  const abilityOptions = React.useMemo(
-    () => [...BASE_ABILITY_OPTIONS, ...customAbilityOptions],
-    [customAbilityOptions],
+  const abilityOptions: SelectOption[] = React.useMemo(
+    () =>
+      modifiersDict
+        ? Object.entries(modifiersDict).map(([key, russianName]) => {
+            const code = MODIFIER_CODE_MAP[key] ?? key.toUpperCase();
+            const capitalized = russianName.charAt(0).toUpperCase() + russianName.slice(1);
+            return {
+              value: key,
+              label: `${capitalized} (${code})`,
+            };
+          })
+        : [],
+    [modifiersDict],
   );
 
   const diceTypeOptions: SelectOption[] = React.useMemo(
@@ -222,23 +211,6 @@ export const ClassForm: React.FC<ClassFormProps> = ({
     [tools],
   );
 
-  const handleCreateCustomAbility = React.useCallback((label: string) => {
-    const trimmed = label.trim();
-    if (!trimmed) {
-      return null;
-    }
-
-    const value = `custom:${trimmed.toLowerCase().replace(/\s+/g, '_')}`;
-    setCustomAbilityOptions((prev) => {
-      if (prev.some((option) => option.value === value)) {
-        return prev;
-      }
-
-      return [...prev, { value, label: trimmed }];
-    });
-
-    return value;
-  }, []);
   const [formTitle, finalSubmitLabel] = React.useMemo(
     () => [
       mode === 'edit' ? 'Редактировать класс' : 'Создать класс',
@@ -343,8 +315,7 @@ export const ClassForm: React.FC<ClassFormProps> = ({
               values={value}
               onChange={onChange}
               options={abilityOptions}
-              allowCustomOption
-              onCreateCustomOption={handleCreateCustomAbility}
+              isLoading={isModifiersLoading}
               errorMessage={errors.primary_modifiers?.message}
             />
           )}
@@ -431,6 +402,7 @@ export const ClassForm: React.FC<ClassFormProps> = ({
                 value={value}
                 onChange={onChange}
                 options={abilityOptions}
+                isLoading={isModifiersLoading}
                 errorMessage={errors.hits?.hit_modifier?.message}
               />
             )}
@@ -476,8 +448,7 @@ export const ClassForm: React.FC<ClassFormProps> = ({
                 values={value}
                 onChange={onChange}
                 options={abilityOptions}
-                allowCustomOption
-                onCreateCustomOption={handleCreateCustomAbility}
+                isLoading={isModifiersLoading}
                 errorMessage={errors.proficiencies?.saving_throws?.message}
               />
             )}
