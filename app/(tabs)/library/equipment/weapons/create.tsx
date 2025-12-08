@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 
 import { WeaponForm } from '@/features/weapons/components/WeaponForm';
 import { getWeaponKinds } from '@/features/weapon-kinds/api/getWeaponKinds';
+import type { WeaponKind } from '@/features/weapon-kinds/api/types';
 import { getWeaponProperties } from '@/features/weapon-properties/api/getWeaponProperties';
 import { getMaterials } from '@/features/materials/api/getMaterials';
 import { getPieceTypes } from '@/features/dictionaries/api/getPieceTypes';
@@ -18,7 +19,10 @@ import { colors } from '@/shared/theme/colors';
 export default function WeaponCreateScreen() {
   const router = useRouter();
 
-  const weaponKindsQuery = useQuery({ queryKey: ['weapon-kinds'], queryFn: getWeaponKinds });
+  const weaponKindsQuery = useQuery<WeaponKind[], Error>({
+    queryKey: ['weapon-kinds'],
+    queryFn: () => getWeaponKinds(),
+  });
   const weaponPropertiesQuery = useQuery({
     queryKey: ['weapon-properties'],
     queryFn: getWeaponProperties,

@@ -14,6 +14,7 @@ import { deleteWeapon } from '@/features/weapons/api/deleteWeapon';
 import { getWeaponById } from '@/features/weapons/api/getWeaponById';
 import type { Weapon } from '@/features/weapons/api/types';
 import { getWeaponKinds } from '@/features/weapon-kinds/api/getWeaponKinds';
+import type { WeaponKind } from '@/features/weapon-kinds/api/types';
 import { getWeaponProperties } from '@/features/weapon-properties/api/getWeaponProperties';
 import { getDamageTypes } from '@/features/dictionaries/api/getDamageTypes';
 import { getDiceTypes } from '@/features/dictionaries/api/getDiceTypes';
@@ -47,7 +48,10 @@ export function WeaponDetails({ weaponId }: WeaponDetailsProps) {
     enabled: Boolean(resolvedWeaponId),
   });
 
-  const weaponKindsQuery = useQuery({ queryKey: ['weapon-kinds'], queryFn: getWeaponKinds });
+  const weaponKindsQuery = useQuery<WeaponKind[], Error>({
+    queryKey: ['weapon-kinds'],
+    queryFn: () => getWeaponKinds(),
+  });
   const weaponPropertiesQuery = useQuery({
     queryKey: ['weapon-properties'],
     queryFn: getWeaponProperties,
