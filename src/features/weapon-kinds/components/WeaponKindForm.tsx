@@ -2,7 +2,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import React from 'react';
 import { Controller, useForm } from 'react-hook-form';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { createWeaponKind } from '@/features/weapon-kinds/api/createWeaponKind';
 import { getWeaponTypes } from '@/features/weapon-kinds/api/getWeaponTypes';
@@ -24,7 +24,7 @@ interface WeaponKindFormProps {
   mode?: WeaponKindFormMode;
   weaponKindId?: string;
   initialValues?: WeaponKindCreateInput;
-  onSuccess?: () => void;
+  onSuccess?: (weaponKindId: string) => void;
   submitLabel?: string;
   showBackButton?: boolean;
   onBackPress?: () => void;
@@ -50,13 +50,15 @@ export const WeaponKindForm: React.FC<WeaponKindFormProps> = ({
   const {
     control,
     handleSubmit,
-    formState: { errors },
+    formState: { errors, isDirty },
     reset,
     setValue,
     watch,
   } = useForm<WeaponKindCreateInput>({
     resolver: zodResolver(WeaponKindCreateSchema),
     defaultValues: initialValues ?? defaultValues,
+    mode: 'onBlur',
+    reValidateMode: 'onChange',
   });
 
   React.useEffect(() => {
@@ -103,18 +105,22 @@ export const WeaponKindForm: React.FC<WeaponKindFormProps> = ({
   const onSubmit = async (values: WeaponKindCreateInput) => {
     setSubmitError(null);
     try {
+      let weaponKindIdForSuccess: string | null = null;
       if (mode === 'edit') {
         if (!weaponKindId) {
           setSubmitError('Не удалось сохранить изменения типа оружия.');
           return;
         }
         await updateMutation.mutateAsync(values);
+        weaponKindIdForSuccess = weaponKindId;
       } else {
-        await createMutation.mutateAsync(values);
-        reset(defaultValues);
+        const created = await createMutation.mutateAsync(values);
+        weaponKindIdForSuccess = created.weapon_kind_id;
       }
 
-      onSuccess?.();
+      if (weaponKindIdForSuccess) {
+        onSuccess?.(weaponKindIdForSuccess);
+      }
     } catch (error) {
       console.error('WeaponKindForm submit error:', error);
       setSubmitError(
@@ -133,17 +139,35 @@ export const WeaponKindForm: React.FC<WeaponKindFormProps> = ({
     (mode === 'edit' ? 'Сохранить изменения' : 'Создать тип оружия');
   const selectedWeaponType = watch('weapon_type');
 
+  const handleBackPress = () => {
+    if (onBackPress) {
+      if (isDirty) {
+        Alert.alert(
+          'Есть несохранённые изменения. Выйти без сохранения?',
+          undefined,
+          [
+            { text: 'Остаться', style: 'cancel' },
+            { text: 'Выйти', style: 'destructive', onPress: onBackPress },
+          ],
+        );
+        return;
+      }
+
+      onBackPress();
+    }
+  };
+
   return (
     <FormScreenLayout
       title={formTitle}
       showBackButton={showBackButton}
-      onBackPress={onBackPress}
+      onBackPress={handleBackPress}
     >
       {submitError ? <Text style={styles.submitError}>{submitError}</Text> : null}
 
       <View style={styles.formCard}>
         <View style={styles.section}>
-          <Text style={styles.label}>Тип оружия</Text>
+          <Text style={styles.label}>Тип оружия *</Text>
 
           {isLoadingWeaponTypes && (
             <BodyText style={styles.helperText}>Загружаю типы оружия…</BodyText>
@@ -167,36 +191,43 @@ export const WeaponKindForm: React.FC<WeaponKindFormProps> = ({
           )}
 
           {!isLoadingWeaponTypes && weaponTypes && weaponTypes.length > 0 ? (
-            <View style={styles.chipsRow}>
-              {weaponTypes.map((option) => (
-                <Pressable
-                  key={option.key}
-                  style={({ pressed }) => [
-                    styles.chip,
-                    pressed && styles.chipPressed,
-                    {
-                      backgroundColor:
-                        pressed || option.key === selectedWeaponType
-                          ? colors.accentSoft
-                          : colors.surface,
-                      borderColor:
-                        option.key === selectedWeaponType
-                          ? colors.accent
-                          : colors.borderMuted,
-                    },
-                  ]}
-                  onPress={() => setValue('weapon_type', option.key)}
-                >
-                  <BodyText
-                    style={[
-                      styles.chipText,
-                      option.key === selectedWeaponType && styles.chipTextActive,
+            <View
+              style={[
+                styles.chipsContainer,
+                errors.weapon_type && styles.chipsContainerError,
+              ]}
+            >
+              <View style={styles.chipsRow}>
+                {weaponTypes.map((option) => (
+                  <Pressable
+                    key={option.key}
+                    style={({ pressed }) => [
+                      styles.chip,
+                      pressed && styles.chipPressed,
+                      {
+                        backgroundColor:
+                          pressed || option.key === selectedWeaponType
+                            ? colors.accentSoft
+                            : colors.surface,
+                        borderColor:
+                          option.key === selectedWeaponType
+                            ? colors.accent
+                            : colors.borderMuted,
+                      },
                     ]}
+                    onPress={() => setValue('weapon_type', option.key)}
                   >
-                    {option.label}
-                  </BodyText>
-                </Pressable>
-              ))}
+                    <BodyText
+                      style={[
+                        styles.chipText,
+                        option.key === selectedWeaponType && styles.chipTextActive,
+                      ]}
+                    >
+                      {option.label}
+                    </BodyText>
+                  </Pressable>
+                ))}
+              </View>
             </View>
           ) : null}
 
@@ -204,7 +235,7 @@ export const WeaponKindForm: React.FC<WeaponKindFormProps> = ({
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.label}>Название</Text>
+          <Text style={styles.label}>Название *</Text>
           <Controller
             control={control}
             name="name"
@@ -274,6 +305,17 @@ const styles = StyleSheet.create({
   },
   helperText: {
     color: colors.textSecondary,
+  },
+  chipsContainer: {
+    padding: 8,
+    borderWidth: 1,
+    borderColor: colors.borderMuted,
+    borderRadius: 10,
+    backgroundColor: colors.surface,
+  },
+  chipsContainerError: {
+    borderColor: colors.error,
+    backgroundColor: colors.surfaceElevated,
   },
   input: {
     borderWidth: 1,

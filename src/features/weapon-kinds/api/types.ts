@@ -22,8 +22,15 @@ export interface WeaponTypeOption {
 
 export const WeaponKindCreateSchema = z.object({
   weapon_type: z.string().min(1, 'Укажите тип оружия'),
-  name: z.string().min(1, 'Название обязательно'),
-  description: z.string().default(''),
+  name: z
+    .string()
+    .min(1, 'Название обязательно')
+    .max(80, 'Название не должно превышать 80 символов'),
+  description: z
+    .string()
+    .max(2000, 'Описание не должно превышать 2000 символов')
+    .optional()
+    .or(z.literal('')),
 });
 
 export type WeaponKindCreateInput = z.infer<typeof WeaponKindCreateSchema>;
