@@ -42,7 +42,15 @@ export function MaterialsList() {
 
   return (
     <ScreenContainer>
-      <TitleText>Материалы</TitleText>
+      <View style={styles.headerRow}>
+        <TitleText>Материалы</TitleText>
+
+        <Link href="/(tabs)/library/equipment/materials/create" asChild>
+          <Pressable style={styles.createButton}>
+            <BodyText style={styles.createButtonText}>+ Создать</BodyText>
+          </Pressable>
+        </Link>
+      </View>
 
       {isLoading && (
         <View style={styles.centered}>
@@ -67,6 +75,12 @@ export function MaterialsList() {
       {showEmpty && (
         <View style={styles.centered}>
           <BodyText style={styles.helperText}>Материалов пока нет</BodyText>
+
+          <Link href="/(tabs)/library/equipment/materials/create" asChild>
+            <Pressable style={styles.createButtonWide}>
+              <BodyText style={styles.createButtonText}>+ Создать первый материал</BodyText>
+            </Pressable>
+          </Link>
         </View>
       )}
 
@@ -149,6 +163,33 @@ const styles = StyleSheet.create({
   retryButtonText: {
     color: colors.buttonSecondaryText,
     fontWeight: '500',
+  },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  createButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    backgroundColor: colors.buttonSecondary,
+    borderWidth: 1,
+    borderColor: colors.borderMuted,
+  },
+  createButtonWide: {
+    marginTop: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    backgroundColor: colors.buttonSecondary,
+    borderWidth: 1,
+    borderColor: colors.borderMuted,
+  },
+  createButtonText: {
+    color: colors.buttonSecondaryText,
+    fontWeight: '600',
   },
   listContainer: {
     paddingBottom: 24,
