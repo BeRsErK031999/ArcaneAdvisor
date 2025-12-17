@@ -11,7 +11,12 @@ export default function CreateWeaponKindScreen() {
       mode="create"
       showBackButton
       onBackPress={() => router.back()}
-      onSuccess={() => router.back()}
+      onSuccess={(id) =>
+        router.replace({
+          pathname: '/(tabs)/library/equipment/weapon-kinds/[weaponKindId]',
+          params: { weaponKindId: String(id) },
+        })
+      }
     />
   );
 }

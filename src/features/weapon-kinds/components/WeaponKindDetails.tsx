@@ -45,8 +45,6 @@ export function WeaponKindDetails({ weaponKindId }: WeaponKindDetailsProps) {
     data: weaponTypes,
     isLoading: isLoadingTypes,
     isError: isErrorTypes,
-    error: errorTypes,
-    refetch: refetchTypes,
   } = useQuery<WeaponTypeOption[], Error>({
     queryKey: ['weapon-types'],
     queryFn: getWeaponTypes,
@@ -67,7 +65,7 @@ export function WeaponKindDetails({ weaponKindId }: WeaponKindDetailsProps) {
   const weaponTypeDisplay = weaponKind
     ? weaponTypeLabel
       ? `${weaponTypeLabel} (${weaponKind.weapon_type})`
-      : weaponKind.weapon_type
+      : weaponKind.weapon_type || '—'
     : '';
 
   const handleDelete = () => {
@@ -88,7 +86,7 @@ export function WeaponKindDetails({ weaponKindId }: WeaponKindDetailsProps) {
     });
   };
 
-  if (isLoading || isLoadingTypes) {
+  if (isLoading) {
     return (
       <ScreenContainer style={styles.centered}>
         <ActivityIndicator color={colors.textSecondary} />
@@ -97,21 +95,20 @@ export function WeaponKindDetails({ weaponKindId }: WeaponKindDetailsProps) {
     );
   }
 
-  if (isError || isErrorTypes) {
+  if (isError) {
     return (
       <ScreenContainer style={styles.centered}>
         <BodyText style={[styles.helperText, styles.errorText]}>
           Не удалось загрузить тип оружия
         </BodyText>
         <BodyText style={styles.errorDetails}>
-          {error?.message ?? errorTypes?.message ?? 'Неизвестная ошибка'}
+          {error?.message ?? 'Неизвестная ошибка'}
         </BodyText>
 
         <Pressable
           style={styles.retryButton}
           onPress={() => {
             refetch();
-            refetchTypes();
           }}
         >
           <BodyText style={styles.retryButtonText}>Повторить</BodyText>
@@ -136,7 +133,14 @@ export function WeaponKindDetails({ weaponKindId }: WeaponKindDetailsProps) {
           <TitleText style={styles.title}>{weaponKind.name}</TitleText>
         </View>
 
-        <BodyText style={styles.meta}>Тип оружия: {weaponTypeDisplay}</BodyText>
+        <BodyText style={styles.meta}>
+          Тип оружия:{' '}
+          {isLoadingTypes ? `${weaponKind.weapon_type || '—'}…` : weaponTypeDisplay}
+        </BodyText>
+
+        {isErrorTypes ? (
+          <BodyText style={styles.warningText}>Словарь типов не загрузился.</BodyText>
+        ) : null}
 
         {weaponKind.description ? (
           <BodyText style={styles.description}>{weaponKind.description}</BodyText>
@@ -206,6 +210,9 @@ const styles = StyleSheet.create({
   },
   meta: {
     color: colors.textMuted,
+  },
+  warningText: {
+    color: colors.warning,
   },
   description: {
     color: colors.textSecondary,

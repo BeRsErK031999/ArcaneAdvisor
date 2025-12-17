@@ -47,10 +47,18 @@ export function WeaponKindsList() {
   const items = weaponKinds ?? [];
   const showList = !isLoading && !isError && items.length > 0;
   const showEmpty = !isLoading && !isError && items.length === 0;
+  const showDictionaryWarning = !isLoading && !isError && isErrorWeaponTypes;
 
   const getTypeLabel = React.useCallback(
-    (weaponType: string) =>
-      weaponTypes?.find((option) => option.key === weaponType)?.label ?? weaponType,
+    (weaponType: string) => {
+      if (!weaponType) {
+        return '—';
+      }
+
+      return (
+        weaponTypes?.find((option) => option.key === weaponType)?.label ?? weaponType
+      );
+    },
     [weaponTypes],
   );
 
@@ -88,19 +96,12 @@ export function WeaponKindsList() {
         </View>
       )}
 
-      {!isLoading && isErrorWeaponTypes && (
-        <View style={styles.centered}>
-          <BodyText style={[styles.helperText, styles.errorText]}>
-            Не удалось загрузить словарь типов оружия
+      {showDictionaryWarning && (
+        <View style={styles.warningBlock}>
+          <BodyText style={styles.warningTitle}>
+            Не удалось загрузить словарь типов оружия. Отображаю ключи.
           </BodyText>
-          <BodyText style={styles.errorDetails}>
-            {weaponTypesError?.message ?? 'Неизвестная ошибка'}
-          </BodyText>
-
-          <Pressable
-            style={styles.retryButton}
-            onPress={() => refetchWeaponTypes()}
-          >
+          <Pressable style={styles.retryButtonGhost} onPress={() => refetchWeaponTypes()}>
             <BodyText style={styles.retryButtonText}>Повторить</BodyText>
           </Pressable>
         </View>
@@ -129,6 +130,7 @@ export function WeaponKindsList() {
               weaponKind={item}
               weaponTypeLabel={getTypeLabel(item.weapon_type)}
               isLoadingWeaponTypes={isLoadingWeaponTypes}
+              hasDictionaryError={isErrorWeaponTypes}
             />
           )}
           contentContainerStyle={styles.listContainer}
@@ -146,12 +148,14 @@ type WeaponKindListItemProps = {
   weaponKind: WeaponKind;
   weaponTypeLabel: string;
   isLoadingWeaponTypes: boolean;
+  hasDictionaryError: boolean;
 };
 
 function WeaponKindListItem({
   weaponKind,
   weaponTypeLabel,
   isLoadingWeaponTypes,
+  hasDictionaryError,
 }: WeaponKindListItemProps) {
   const href: Href = {
     pathname: '/(tabs)/library/equipment/weapon-kinds/[weaponKindId]',
@@ -164,7 +168,11 @@ function WeaponKindListItem({
         <View style={styles.cardHeader}>
           <BodyText style={styles.name}>{weaponKind.name}</BodyText>
           <BodyText style={styles.type}>
-            {isLoadingWeaponTypes ? '…' : weaponTypeLabel}
+            {hasDictionaryError
+              ? weaponTypeLabel
+              : isLoadingWeaponTypes
+              ? '…'
+              : weaponTypeLabel}
           </BodyText>
         </View>
 
@@ -196,6 +204,23 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     textAlign: 'center',
   },
+  warningBlock: {
+    marginTop: 4,
+    marginBottom: 8,
+    padding: 12,
+    borderRadius: 8,
+    backgroundColor: colors.surfaceElevated,
+    borderWidth: 1,
+    borderColor: colors.warning,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    columnGap: 12,
+  },
+  warningTitle: {
+    color: colors.warning,
+    flex: 1,
+  },
   errorText: {
     color: colors.error,
     fontWeight: '600',
@@ -212,6 +237,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     borderRadius: 8,
     backgroundColor: colors.buttonSecondary,
+    borderWidth: 1,
+    borderColor: colors.borderMuted,
+  },
+  retryButtonGhost: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.borderMuted,
   },

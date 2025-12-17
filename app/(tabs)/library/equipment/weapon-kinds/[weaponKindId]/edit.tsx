@@ -1,7 +1,7 @@
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Pressable, StyleSheet } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet } from 'react-native';
 
 import { getWeaponKindById } from '@/features/weapon-kinds/api/getWeaponKindById';
 import type {
@@ -16,6 +16,7 @@ import { BodyText } from '@/shared/ui/Typography';
 export default function EditWeaponKindScreen() {
   const router = useRouter();
   const { weaponKindId } = useLocalSearchParams<{ weaponKindId?: string }>();
+  const resolvedId = weaponKindId ? String(weaponKindId) : '';
 
   const {
     data: weaponKind,
@@ -24,12 +25,12 @@ export default function EditWeaponKindScreen() {
     error,
     refetch,
   } = useQuery<WeaponKind, Error>({
-    queryKey: ['weapon-kinds', weaponKindId ?? 'unknown-weapon-kind'],
-    queryFn: () => getWeaponKindById(String(weaponKindId)),
-    enabled: Boolean(weaponKindId),
+    queryKey: ['weapon-kinds', resolvedId],
+    queryFn: () => getWeaponKindById(resolvedId),
+    enabled: Boolean(resolvedId),
   });
 
-  if (!weaponKindId) {
+  if (!resolvedId) {
     return (
       <ScreenContainer style={styles.centered}>
         <BodyText>Не указан идентификатор типа оружия.</BodyText>
@@ -40,6 +41,7 @@ export default function EditWeaponKindScreen() {
   if (isLoading) {
     return (
       <ScreenContainer style={styles.centered}>
+        <ActivityIndicator color={colors.textSecondary} />
         <BodyText style={styles.helperText}>Загружаю данные…</BodyText>
       </ScreenContainer>
     );
@@ -69,11 +71,16 @@ export default function EditWeaponKindScreen() {
   return (
     <WeaponKindForm
       mode="edit"
-      weaponKindId={String(weaponKindId)}
+      weaponKindId={resolvedId}
       initialValues={initialValues}
       showBackButton
       onBackPress={() => router.back()}
-      onSuccess={() => router.back()}
+      onSuccess={(id) =>
+        router.replace({
+          pathname: '/(tabs)/library/equipment/weapon-kinds/[weaponKindId]',
+          params: { weaponKindId: String(id) },
+        })
+      }
       submitLabel="Сохранить изменения"
     />
   );
