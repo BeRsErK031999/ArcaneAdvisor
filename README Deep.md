@@ -1,425 +1,104 @@
-# ArcaneAdvisor — React Native + Expo Project
+# ArcaneAdvisor — Deep Technical README
 
-ArcaneAdvisor — это мобильное и веб‑приложение на **Expo + React Native + TypeScript**, представляющее собой полнофункциональную SRD‑библиотеку D&D 5e с возможностью создания собственных сущностей: **заклинаний, классов, рас, подклассов, подрас, фитов**, оружия, доспехов и многого другого.
-
-## 📌 Стек проекта
-
-- **Expo + React Native + TypeScript**
-- **Expo Router** (маршрутизация через файловую структуру `app/`)
-- **@tanstack/react-query** (серверное состояние)
-- **axios** (универсальный API‑клиент)
-- **react-hook-form + zod** (формы и валидация)
-- **Тёмная тема** (`src/shared/theme`)
-- Архитектура в стиле **feature-based**
+ArcaneAdvisor — это кросс-платформенное приложение (**Expo + React Native + Web**) для работы с SRD D&D 5e, ориентированное на **админов, ДМ и создателей контента**.  
+Проект предоставляет полноценный CRUD для всех игровых сущностей с жёсткими UX-правилами, исключающими ручной ввод UUID и неконсистентные данные.
 
 ---
 
-# 📁 Структура проекта
+## 📌 Технологический стек
+
+- **Expo + React Native + TypeScript**
+- **Expo Router** — файловая маршрутизация (`app/`)
+- **@tanstack/react-query** — серверное состояние и кэш
+- **axios** — единый API-клиент (`apiClient`)
+- **react-hook-form + zod** — формы и строгая валидация
+- **Тёмная тема** (`src/shared/theme`)
+- **Feature-based архитектура**
+
+---
+
+## 🧠 Ключевые UX-принципы проекта (ОБЯЗАТЕЛЬНЫ)
+
+### 1️⃣ Никаких UUID в UI
+- Все связи (`material_id`, `weapon_kind_id`, `source_id` и т.д.)  
+  **всегда выбираются по названию**, а UUID отправляется автоматически.
+- UUID **никогда** не вводится пользователем вручную.
+
+### 2️⃣ Единый flow Create / Edit
+- После **Create** и **Edit** всегда используется:
+```
+router.replace(detailsRoute)
+```
+- ❌ `router.back()` после сохранения запрещён.
+- ❌ reset формы после Create запрещён — админ должен видеть результат.
+
+### 3️⃣ Back-guard (unsaved changes)
+- На **всех Create/Edit формах**:
+  - если есть изменения → показывается Alert  
+    *«Есть несохранённые изменения. Выйти без сохранения?»*
+- Реализуется через `formState.isDirty`.
+
+### 4️⃣ Nullable поля через Switch
+- Switch управляет тем, отправляется ли `null` или объект.
+- Если включено — значения обязательны и валидируются.
+- ❌ Нельзя сохранять `count = 0`.
+- ❌ Нельзя превращать пустой ввод в `0`.
+
+### 5️⃣ Мягкий ввод чисел
+Запрещён паттерн:
+```
+Number(text) || 0
+```
+Корректное поведение:
+- пустая строка → не менять значение
+- невалидное число → не менять значение
+- валидное число → обновить
+
+### 6️⃣ Словари не блокируют UI
+- При ошибке словаря UI продолжает работать.
+- Показывается fallback (key).
+- Есть кнопка «Повторить».
+
+---
+
+## 📁 Структура проекта (актуальная)
 
 ```
 project-root/
-  app/                      # Маршруты (Expo Router)
-    _layout.tsx
-    index.tsx
-
-    (tabs)/                 # Нижняя вкладочная навигация
-      _layout.tsx
-
-      library/              # Справочник (SRD)
-        index.tsx           # Меню разделов
+  app/
+    (tabs)/
+      library/
         spells/
-          index.tsx
-          [spellId].tsx
-          [spellId]/edit.tsx
-          create.tsx
-        classes/
-          index.tsx
-          [classId].tsx
-          [classId]/edit.tsx
-          create.tsx
-        races/
-          index.tsx
-          [raceId].tsx
-          [raceId]/edit.tsx
-          create.tsx
-        subclasses/
-          index.tsx
-          [subclassId]/edit.tsx
-          create.tsx
-        subraces/
-          index.tsx
-          [subraceId]/edit.tsx
-          create.tsx
         feats/
-          index.tsx
-          [featId]/edit.tsx
-          create.tsx
-
         equipment/
-          armors/
-            index.tsx
           weapons/
-            index.tsx
+          armors/
           tools/
-            index.tsx
           materials/
-            index.tsx
           material-components/
-            index.tsx
           weapon-kinds/
-            index.tsx
           weapon-properties/
-            index.tsx
-
         sources/
-          index.tsx
-
         dictionaries/
-          index.tsx        # Все словари SRD: кубики, монеты, урон, навыки, типы существ
-
-      characters/
-        index.tsx
-
-      rooms/
-        index.tsx
-
-      settings/
-        index.tsx
-
   src/
     shared/
-      api/
-        client.ts          # axios-клиент
-      theme/
-        colors.ts          # палитра тёмной темы
-      ui/
-        ScreenContainer.tsx
-        FormScreenLayout.tsx
-        FormSubmitButton.tsx
-        FormErrorText.tsx
-      forms/
-        formTypes.ts
-
     features/
-      spells/
-        api/
-          types.ts
-          getSpells.ts
-          getSpellById.ts
-          createSpell.ts
-          updateSpell.ts
-        components/
-          SpellsList.tsx
-          SpellDetails.tsx
-          SpellForm.tsx
-
-      classes/
-        api/
-          types.ts
-          getClasses.ts
-          getClassById.ts
-          createClass.ts
-          updateClass.ts
-        components/
-          ClassesList.tsx
-          ClassDetails.tsx
-          ClassForm.tsx
-
-      races/
-        api/
-          types.ts
-          getRaces.ts
-          getRaceById.ts
-          createRace.ts
-          updateRace.ts
-        components/
-          RacesList.tsx
-          RaceDetails.tsx
-          RaceForm.tsx
-
-      subclasses/
-        api/
-          types.ts
-          getSubclasses.ts
-          getSubclassById.ts
-          createSubclass.ts
-          updateSubclass.ts
-        components/
-          SubclassesList.tsx
-          SubclassForm.tsx
-
-      subraces/
-        api/
-          types.ts
-          getSubraces.ts
-          getSubraceById.ts
-          createSubrace.ts
-          updateSubrace.ts
-        components/
-          SubracesList.tsx
-          SubraceForm.tsx
-
-      feats/
-        api/
-          types.ts
-          getFeats.ts
-          getFeatById.ts
-          createFeat.ts
-          updateFeat.ts
-        components/
-          FeatsList.tsx
-          FeatForm.tsx
-
-      armors/
-      weapons/
-      tools/
-      materials/
-      material-components/
-      weapon-kinds/
-      weapon-properties/
-      sources/
-      dictionaries/
 ```
 
 ---
 
-# 🧱 Архитектурные принципы
-
-### Feature‑based структура
-
-Каждая сущность оформляется как фича:
+## 🧱 Feature-based архитектура
 
 ```
 features/<entity>/
   api/
-    types.ts
-    get<EntityPlural>.ts
-    get<Entity>ById.ts
-    create<Entity>.ts
-    update<Entity>.ts
   components/
-    <EntityPlural>List.tsx
-    <Entity>Details.tsx
-    <Entity>Form.tsx   # Create + Edit
 ```
 
-Это даёт:
-
-- единый паттерн разработки,
-- быстрое добавление новых сущностей,
-- предсказуемые маршруты.
+Правила:
+- API-логика — только в `api/`
+- UI — только в `components/`
+- Один `Form` для Create/Edit
+- Один `Details` без form-логики
 
 ---
-
-# 🔌 Работа с API
-
-### API-клиент
-
-Вся работа с сетью идёт через:
-
-```
-src/shared/api/client.ts
-```
-
-- базовый URL берётся из `.env`
-- axios-interceptor логирует и нормализует ошибки
-- **запрещено** создавать новые axios-инстансы
-
-### React Query
-
-#### Список сущностей
-
-```ts
-useQuery({
-  queryKey: ['spells'],
-  queryFn: getSpells,
-});
-```
-
-#### Детальная страница
-
-```ts
-useQuery({
-  queryKey: ['spells', spellId],
-  queryFn: () => getSpellById(spellId),
-});
-```
-
-#### Create / Update
-
-```ts
-const mutation = useMutation({
-  mutationFn: createSpell,
-  onSuccess: () => queryClient.invalidateQueries(['spells']),
-});
-```
-
----
-
-# ✏️ Формы и валидация
-
-Используются:
-
-- `react-hook-form`
-- `zod`
-- `zodResolver`
-
-### Настройка
-
-```ts
-const { control, handleSubmit, reset } = useForm<XCreateInput>({
-  resolver: zodResolver(XCreateSchema),
-  defaultValues: initialValues ?? defaultValues,
-});
-
-useEffect(() => {
-  if (initialValues) reset(initialValues);
-}, [initialValues]);
-```
-
-> Нельзя вызывать `XCreateSchema.parse(defaultValues)` с невалидными полями.
-
----
-
-# 🎨 UI и тема
-
-Тема лежит в:
-
-```
-src/shared/theme/colors.ts
-```
-
-**Все** цвета должны использоваться только оттуда:
-
-- фон: `colors.background`
-- текст: `colors.textPrimary`
-- инпуты: `colors.inputBackground`, `colors.inputBorder`
-- ошибки: `colors.error`
-- кнопки: `colors.buttonPrimary`
-
-### Обёртка экрана
-
-```tsx
-<ScreenContainer>
-  {/* любой экран */}
-</ScreenContainer>
-```
-
-### Обёртка формы
-
-```tsx
-<FormScreenLayout title="Создать заклинание">
-  {/* поля */}
-</FormScreenLayout>
-```
-
-### Инпуты
-
-```tsx
-<TextInput
-  style={{
-    backgroundColor: colors.inputBackground,
-    borderColor: colors.inputBorder,
-    color: colors.textPrimary,
-  }}
-  placeholderTextColor={colors.inputPlaceholder}
-/>
-```
-
----
-
-# 🧩 Как добавить новую сущность
-
-Пример: `backgrounds`.
-
-## 1. API + типы
-
-Создать:
-
-```
-features/backgrounds/api/types.ts
-features/backgrounds/api/getBackgrounds.ts
-features/backgrounds/api/getBackgroundById.ts
-features/backgrounds/api/createBackground.ts
-features/backgrounds/api/updateBackground.ts
-```
-
-## 2. Компоненты
-
-```
-features/backgrounds/components/BackgroundsList.tsx
-features/backgrounds/components/BackgroundDetails.tsx
-features/backgrounds/components/BackgroundForm.tsx
-```
-
-## 3. Маршруты
-
-```
-app/(tabs)/library/backgrounds/
-  index.tsx
-  [backgroundId].tsx
-  [backgroundId]/edit.tsx
-  create.tsx
-```
-
-## 4. Добавить пункт в меню
-
-```
-app/(tabs)/library/index.tsx
-```
-
-## 5. Проверить
-
-```
-npx tsc --noEmit
-npx expo start
-```
-
----
-
-# ✔️ Правила разработки
-
-Полные правила — в `AGENTS.md`, но основные:
-
-### ❌ нельзя
-
-- использовать `any`
-- использовать `fetch` — только `apiClient`
-- хардкодить URL API
-- писать компоненты без темы/стилей
-- делать API‑запросы внутри списков напрямую (только через React Query)
-
-### ✔️ нужно
-
-- использовать `@/` алиасы
-- использовать фичи для каждой сущности
-- выносить всю логику запросов в `api/`
-- соблюдать тему в инпутах/кнопках/тексте
-- делать один компонент `Form` для Create+Edit
-
----
-
-# 🚀 Roadmap
-
-### ✓ Сделано
-- Справочник со всеми сущностями
-- Детальные страницы
-- Create + Edit для основных сущностей
-- Базовая тема и UX‑структура
-
-### 🔜 Следующие шаги
-- Операции Delete
-- Улучшение UI/UX (карточки, поиск, фильтры)
-- Создание персонажей
-- Создание комнат
-- Онлайн‑синхронизация
-
----
-
-Если нужно — могу подготовить:
-
-- CONTRIBUTING.md  
-- Roadmap.md (детальный план развития)  
-- Architectural Overview (диаграммы)  
-- Документацию для бэкенда или API‑контракты
-
