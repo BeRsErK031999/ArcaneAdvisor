@@ -106,7 +106,14 @@ export function WeaponPropertyDetails({ weaponPropertyId }: WeaponPropertyDetail
   return (
     <ScreenContainer>
       <View style={styles.headerRow}>
-        <TitleText style={styles.title}>{readableName ?? data.name}</TitleText>
+        <Pressable style={styles.backButton} onPress={() => router.back()}>
+          <BodyText style={styles.backButtonText}>Назад</BodyText>
+        </Pressable>
+
+        <View style={styles.titleBlock}>
+          <TitleText style={styles.title}>{readableName ?? data.name}</TitleText>
+          {readableName ? <BodyText style={styles.subtitle}>{data.name}</BodyText> : null}
+        </View>
       </View>
 
       <View style={styles.infoBlock}>
@@ -204,10 +211,32 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    columnGap: 12,
     marginBottom: 12,
   },
   title: {
     marginBottom: 0,
+  },
+  titleBlock: {
+    flex: 1,
+  },
+  subtitle: {
+    color: colors.textSecondary,
+    fontSize: 13,
+  },
+  backButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.borderMuted,
+    backgroundColor: colors.surface,
+  },
+  backButtonText: {
+    color: colors.textSecondary,
+    fontWeight: '600',
   },
   infoBlock: {
     marginBottom: 12,
