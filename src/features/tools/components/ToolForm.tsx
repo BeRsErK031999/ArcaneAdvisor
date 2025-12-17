@@ -4,8 +4,10 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   ActivityIndicator,
+  Alert,
   Pressable,
   StyleSheet,
+  Switch,
   Text,
   TextInput,
   View,
@@ -32,21 +34,15 @@ interface ToolFormProps {
   mode?: 'create' | 'edit';
   toolId?: string;
   initialValues?: ToolCreateInput;
-  onSuccess?: () => void;
+  onSuccess?: (toolId: string) => void;
 }
 
 const defaultValues: ToolCreateInput = {
   tool_type: '',
   name: '',
   description: '',
-  cost: {
-    count: 0,
-    piece_type: '',
-  },
-  weight: {
-    count: 0,
-    unit: '',
-  },
+  cost: null,
+  weight: null,
   utilizes: [],
 };
 
@@ -63,19 +59,25 @@ export function ToolForm({
   const {
     control,
     handleSubmit,
-    formState: { errors },
+    formState: { errors, isDirty },
     reset,
     watch,
     setValue,
   } = useForm<ToolCreateInput>({
     resolver: zodResolver(ToolCreateSchema),
     defaultValues: formDefaultValues,
+    mode: 'onBlur',
+    reValidateMode: 'onChange',
   });
 
   React.useEffect(() => {
-    if (initialValues) {
-      reset(initialValues);
-    }
+    const nextValues = initialValues ?? defaultValues;
+    reset(nextValues);
+    setCostCountInput(stringifyNumber(nextValues.cost?.count));
+    setWeightCountInput(stringifyNumber(nextValues.weight?.count));
+    setUtilizeComplexities(
+      (nextValues.utilizes ?? []).map((item) => stringifyNumber(item?.complexity)),
+    );
   }, [initialValues, reset]);
 
   const { fields, append, remove } = useFieldArray({
@@ -149,6 +151,32 @@ export function ToolForm({
     [weightUnits],
   );
 
+  const defaultPieceType = React.useMemo(
+    () => pieceTypeOptions[0]?.value ?? 'gp',
+    [pieceTypeOptions],
+  );
+
+  const defaultWeightUnit = React.useMemo(
+    () => weightUnitOptions[0]?.value ?? 'lb',
+    [weightUnitOptions],
+  );
+
+  const stringifyNumber = (value: number | null | undefined) =>
+    value === undefined || value === null ? '' : String(value);
+
+  const [costCountInput, setCostCountInput] = React.useState<string>(() =>
+    stringifyNumber(formDefaultValues.cost?.count),
+  );
+  const [weightCountInput, setWeightCountInput] = React.useState<string>(() =>
+    stringifyNumber(formDefaultValues.weight?.count),
+  );
+  const [utilizeComplexities, setUtilizeComplexities] = React.useState<string[]>(
+    () =>
+      (formDefaultValues.utilizes ?? []).map((item) =>
+        stringifyNumber(item?.complexity),
+      ),
+  );
+
   const createMutation = useMutation({
     mutationFn: createTool,
     onSuccess: () => {
@@ -177,6 +205,13 @@ export function ToolForm({
     refetchWeightUnits();
   };
 
+  const navigateToDetails = (id: string) => {
+    router.replace({
+      pathname: '/(tabs)/library/equipment/tools/[toolId]',
+      params: { toolId: id },
+    });
+  };
+
   const onSubmit = async (values: ToolCreateInput) => {
     setSubmitError(null);
     try {
@@ -186,15 +221,18 @@ export function ToolForm({
           return;
         }
         await updateMutation.mutateAsync(values);
-      } else {
-        await createMutation.mutateAsync(values);
-        reset(defaultValues);
+        onSuccess ? onSuccess(toolId) : navigateToDetails(toolId);
+        return;
       }
 
+      const created = await createMutation.mutateAsync(values);
+      queryClient.setQueryData(['tools', created.tool_id], created);
+
+      const createdId = created.tool_id;
       if (onSuccess) {
-        onSuccess();
+        onSuccess(createdId);
       } else {
-        router.back();
+        navigateToDetails(createdId);
       }
     } catch (error) {
       console.error('Tool form submit error:', error);
@@ -206,31 +244,128 @@ export function ToolForm({
     }
   };
 
+  const handleBackPress = () => {
+    if (isDirty) {
+      Alert.alert(
+        'Есть несохранённые изменения',
+        'Вы уверены, что хотите выйти без сохранения?',
+        [
+          { text: 'Отмена', style: 'cancel' },
+          { text: 'Покинуть', style: 'destructive', onPress: () => router.back() },
+        ],
+      );
+      return;
+    }
+
+    router.back();
+  };
+
+  React.useEffect(() => {
+    setUtilizeComplexities((prev) =>
+      fields.map((field, index) => prev[index] ?? stringifyNumber(field.complexity)),
+    );
+  }, [fields]);
+
+  const toolTypeValue = watch('tool_type');
+  const costValue = watch('cost');
+  const weightValue = watch('weight');
+
+  React.useEffect(() => {
+    setCostCountInput(stringifyNumber(costValue?.count));
+  }, [costValue?.count, costValue]);
+
+  React.useEffect(() => {
+    setWeightCountInput(stringifyNumber(weightValue?.count));
+  }, [weightValue?.count, weightValue]);
+
+  const handleCostToggle = (enabled: boolean) => {
+    if (enabled) {
+      setValue('cost', { count: 1, piece_type: defaultPieceType }, { shouldValidate: true });
+      setCostCountInput('1');
+    } else {
+      setValue('cost', null, { shouldValidate: true });
+      setCostCountInput('');
+    }
+  };
+
+  const handleWeightToggle = (enabled: boolean) => {
+    if (enabled) {
+      setValue('weight', { count: 1, unit: defaultWeightUnit }, { shouldValidate: true });
+      setWeightCountInput('1');
+    } else {
+      setValue('weight', null, { shouldValidate: true });
+      setWeightCountInput('');
+    }
+  };
+
+  const handleNumericChange = (
+    text: string,
+    onChange: (value: number) => void,
+    setInput: (val: string) => void,
+  ) => {
+    setInput(text);
+    const trimmed = text.trim();
+    if (trimmed === '') return;
+
+    const parsed = Number(trimmed);
+    if (Number.isNaN(parsed)) return;
+
+    onChange(parsed);
+  };
+
+  const handleComplexityChange = (
+    text: string,
+    index: number,
+    onChange: (value: number) => void,
+  ) => {
+    setUtilizeComplexities((prev) => {
+      const next = [...prev];
+      next[index] = text;
+      return next;
+    });
+
+    const trimmed = text.trim();
+    if (trimmed === '') return;
+
+    const parsed = Number(trimmed);
+    if (Number.isNaN(parsed)) return;
+
+    onChange(parsed);
+  };
+
+  const handleAddUtilize = () => {
+    append({ action: '', complexity: 1 });
+    setUtilizeComplexities((prev) => [...prev, '1']);
+  };
+
+  const handleRemoveUtilize = (index: number) => {
+    remove(index);
+    setUtilizeComplexities((prev) => prev.filter((_, i) => i !== index));
+  };
+
   const isSubmitting = createMutation.isPending || updateMutation.isPending;
   const formTitle = mode === 'edit' ? 'Редактировать инструмент' : 'Создать инструмент';
   const submitLabel = mode === 'edit' ? 'Сохранить изменения' : 'Создать инструмент';
-
-  const toolTypeValue = watch('tool_type');
-  const costPieceTypeValue = watch('cost.piece_type');
-  const weightUnitValue = watch('weight.unit');
-
-  if (isLoadingDictionaries) {
-    return (
-      <FormScreenLayout title={formTitle} showBackButton>
-        <View style={styles.centered}>
-          <ActivityIndicator color={colors.textSecondary} />
-          <BodyText style={styles.helperText}>Загружаю данные…</BodyText>
-        </View>
-      </FormScreenLayout>
-    );
-  }
+  const hasCost = costValue !== null && costValue !== undefined;
+  const hasWeight = weightValue !== null && weightValue !== undefined;
+  const costPieceTypeValue = costValue?.piece_type ?? '';
+  const weightUnitValue = weightValue?.unit ?? '';
 
   const hasDictionaryError = isErrorToolTypes || isErrorPieceTypes || isErrorWeightUnits;
 
-  if (hasDictionaryError) {
-    return (
-      <FormScreenLayout title={formTitle} showBackButton>
-        <View style={styles.centered}>
+  return (
+    <FormScreenLayout title={formTitle} showBackButton onBackPress={handleBackPress}>
+      {submitError ? <FormErrorText>{submitError}</FormErrorText> : null}
+
+      {isLoadingDictionaries ? (
+        <View style={styles.infoRow}>
+          <ActivityIndicator color={colors.textSecondary} />
+          <BodyText style={styles.helperText}>Загружаю справочники…</BodyText>
+        </View>
+      ) : null}
+
+      {hasDictionaryError ? (
+        <View style={[styles.card, styles.warningCard]}>
           <BodyText style={[styles.helperText, styles.errorText]}>
             Не удалось загрузить справочники
           </BodyText>
@@ -238,19 +373,13 @@ export function ToolForm({
             <BodyText style={styles.retryButtonText}>Повторить</BodyText>
           </Pressable>
         </View>
-      </FormScreenLayout>
-    );
-  }
-
-  return (
-    <FormScreenLayout title={formTitle} showBackButton>
-      {submitError ? <FormErrorText>{submitError}</FormErrorText> : null}
+      ) : null}
 
       <View style={styles.card}>
         <BodyText style={styles.sectionTitle}>Основное</BodyText>
 
         <View style={styles.field}>
-          <Text style={styles.label}>Название</Text>
+          <Text style={styles.label}>Название *</Text>
           <Controller
             control={control}
             name="name"
@@ -270,7 +399,7 @@ export function ToolForm({
 
         <View style={styles.field}>
           <SelectField
-            label="Тип инструмента"
+            label="Тип инструмента *"
             value={toolTypeValue}
             onChange={(val) => setValue('tool_type', val)}
             options={toolTypeOptions}
@@ -303,89 +432,126 @@ export function ToolForm({
       </View>
 
       <View style={styles.card}>
-        <BodyText style={styles.sectionTitle}>Стоимость</BodyText>
-        <View style={styles.row}>
-          <View style={[styles.field, styles.flex1]}>
-            <Text style={styles.label}>Количество</Text>
-            <Controller
-              control={control}
-              name="cost.count"
-              render={({ field: { value, onChange, onBlur } }) => (
-                <TextInput
-                  value={String(value)}
-                  onChangeText={(text) => onChange(Number(text) || 0)}
-                  onBlur={onBlur}
-                  keyboardType="numeric"
-                  style={styles.input}
-                  placeholderTextColor={colors.inputPlaceholder}
-                />
-              )}
-            />
-            {errors.cost?.count ? (
-              <FormErrorText>{errors.cost.count.message}</FormErrorText>
-            ) : null}
-          </View>
-
-          <View style={[styles.field, styles.flex1]}>
-            <SelectField
-              label="Тип монеты"
-              value={costPieceTypeValue}
-              onChange={(val) => setValue('cost.piece_type', val)}
-              options={pieceTypeOptions}
-              isLoading={isLoadingPieceTypes}
-              errorMessage={errors.cost?.piece_type?.message}
-            />
+        <View style={styles.sectionHeader}>
+          <BodyText style={styles.sectionTitle}>Стоимость</BodyText>
+          <View style={styles.switchGroup}>
+            <Text style={styles.label}>Есть стоимость</Text>
+            <Switch value={hasCost} onValueChange={handleCostToggle} />
           </View>
         </View>
-      </View>
 
-      <View style={styles.card}>
-        <BodyText style={styles.sectionTitle}>Вес</BodyText>
-        <View style={styles.row}>
-          <View style={[styles.field, styles.flex1]}>
-            <Text style={styles.label}>Количество</Text>
-            <Controller
-              control={control}
-              name="weight.count"
-              render={({ field: { value, onChange, onBlur } }) => (
-                <TextInput
-                  value={String(value)}
-                  onChangeText={(text) => onChange(Number(text) || 0)}
-                  onBlur={onBlur}
-                  keyboardType="numeric"
-                  style={styles.input}
-                  placeholderTextColor={colors.inputPlaceholder}
-                />
-              )}
-            />
-            {errors.weight?.count ? (
-              <FormErrorText>{errors.weight.count.message}</FormErrorText>
-            ) : null}
-          </View>
+        {hasCost ? (
+          <View style={styles.row}>
+            <View style={[styles.field, styles.flex1]}>
+              <Text style={styles.label}>Количество</Text>
+              <Controller
+                control={control}
+                name="cost.count"
+                render={({ field: { onChange, onBlur } }) => (
+                  <TextInput
+                    value={costCountInput}
+                    onChangeText={(text) =>
+                      handleNumericChange(text, onChange, setCostCountInput)
+                    }
+                    onBlur={onBlur}
+                    keyboardType="numeric"
+                    style={styles.input}
+                    placeholderTextColor={colors.inputPlaceholder}
+                  />
+                )}
+              />
+              {errors.cost?.count ? (
+                <FormErrorText>{errors.cost.count.message}</FormErrorText>
+              ) : null}
+            </View>
 
-          <View style={[styles.field, styles.flex1]}>
-            <SelectField
-              label="Единица измерения"
-              value={weightUnitValue}
-              onChange={(val) => setValue('weight.unit', val)}
-              options={weightUnitOptions}
-              isLoading={isLoadingWeightUnits}
-              errorMessage={errors.weight?.unit?.message}
-            />
+            <View style={[styles.field, styles.flex1]}>
+              <SelectField
+                label="Тип монеты *"
+                value={costPieceTypeValue}
+                onChange={(val) => {
+                  if (!hasCost) {
+                    handleCostToggle(true);
+                  }
+                  setValue('cost.piece_type', val, { shouldValidate: true });
+                }}
+                options={pieceTypeOptions}
+                isLoading={isLoadingPieceTypes}
+                errorMessage={errors.cost?.piece_type?.message}
+              />
+            </View>
           </View>
-        </View>
+        ) : (
+          <BodyText style={styles.helperText}>Стоимость не указана</BodyText>
+        )}
       </View>
 
       <View style={styles.card}>
         <View style={styles.sectionHeader}>
-          <BodyText style={styles.sectionTitle}>Действия</BodyText>
-          <Pressable
-            style={styles.addButton}
-            onPress={() => append({ action: '', complexity: 0 })}
-          >
+          <BodyText style={styles.sectionTitle}>Вес</BodyText>
+          <View style={styles.switchGroup}>
+            <Text style={styles.label}>Есть вес</Text>
+            <Switch value={hasWeight} onValueChange={handleWeightToggle} />
+          </View>
+        </View>
+
+        {hasWeight ? (
+          <View style={styles.row}>
+            <View style={[styles.field, styles.flex1]}>
+              <Text style={styles.label}>Количество</Text>
+              <Controller
+                control={control}
+                name="weight.count"
+                render={({ field: { onChange, onBlur } }) => (
+                  <TextInput
+                    value={weightCountInput}
+                    onChangeText={(text) =>
+                      handleNumericChange(text, onChange, setWeightCountInput)
+                    }
+                    onBlur={onBlur}
+                    keyboardType="numeric"
+                    style={styles.input}
+                    placeholderTextColor={colors.inputPlaceholder}
+                  />
+                )}
+              />
+              {errors.weight?.count ? (
+                <FormErrorText>{errors.weight.count.message}</FormErrorText>
+              ) : null}
+            </View>
+
+            <View style={[styles.field, styles.flex1]}>
+              <SelectField
+                label="Единица измерения *"
+                value={weightUnitValue}
+                onChange={(val) => {
+                  if (!hasWeight) {
+                    handleWeightToggle(true);
+                  }
+                  setValue('weight.unit', val, { shouldValidate: true });
+                }}
+                options={weightUnitOptions}
+                isLoading={isLoadingWeightUnits}
+                errorMessage={errors.weight?.unit?.message}
+              />
+            </View>
+          </View>
+        ) : (
+          <BodyText style={styles.helperText}>Вес не указан</BodyText>
+        )}
+      </View>
+
+      <View style={styles.card}>
+        <View style={styles.sectionHeader}>
+          <BodyText style={styles.sectionTitle}>Действия *</BodyText>
+          <Pressable style={styles.addButton} onPress={handleAddUtilize}>
             <Text style={styles.addButtonText}>+ Добавить действие</Text>
           </Pressable>
         </View>
+
+        {errors.utilizes?.message ? (
+          <FormErrorText>{errors.utilizes.message}</FormErrorText>
+        ) : null}
 
         {fields.length === 0 ? (
           <BodyText style={styles.helperText}>Добавьте хотя бы одно действие</BodyText>
@@ -395,7 +561,7 @@ export function ToolForm({
           <View key={field.id} style={styles.utilizeCard}>
             <View style={styles.utilizeHeader}>
               <BodyText style={styles.label}>Действие #{index + 1}</BodyText>
-              <Pressable onPress={() => remove(index)}>
+              <Pressable onPress={() => handleRemoveUtilize(index)}>
                 <Text style={styles.removeText}>Удалить</Text>
               </Pressable>
             </View>
@@ -422,14 +588,16 @@ export function ToolForm({
             </View>
 
             <View style={styles.field}>
-              <Text style={styles.label}>Сложность</Text>
+              <Text style={styles.label}>Сложность *</Text>
               <Controller
                 control={control}
                 name={`utilizes.${index}.complexity`}
                 render={({ field: { value, onChange, onBlur } }) => (
                   <TextInput
-                    value={String(value)}
-                    onChangeText={(text) => onChange(Number(text) || 0)}
+                    value={utilizeComplexities[index] ?? String(value ?? '')}
+                    onChangeText={(text) =>
+                      handleComplexityChange(text, index, onChange)
+                    }
                     onBlur={onBlur}
                     keyboardType="numeric"
                     style={styles.input}
@@ -471,6 +639,20 @@ const styles = StyleSheet.create({
   errorText: {
     color: colors.error,
     fontWeight: '600',
+  },
+  infoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    columnGap: 8,
+    padding: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.borderMuted,
+    backgroundColor: colors.surface,
+  },
+  warningCard: {
+    borderColor: colors.error,
+    backgroundColor: colors.surface,
   },
   retryButton: {
     marginTop: 12,
@@ -529,6 +711,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+  },
+  switchGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    columnGap: 8,
   },
   addButton: {
     paddingHorizontal: 12,

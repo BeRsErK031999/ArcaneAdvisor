@@ -13,6 +13,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { deleteTool } from '@/features/tools/api/deleteTool';
 import { getToolById } from '@/features/tools/api/getToolById';
 import type { Tool } from '@/features/tools/api/types';
+import { getToolTypes } from '@/features/tools/api/getToolTypes';
 import { colors } from '@/shared/theme/colors';
 import { ScreenContainer } from '@/shared/ui/ScreenContainer';
 import { BodyText, TitleText } from '@/shared/ui/Typography';
@@ -40,10 +41,16 @@ export function ToolDetails({ toolId }: ToolDetailsProps) {
     enabled: Boolean(resolvedToolId),
   });
 
+  const { data: toolTypes } = useQuery({
+    queryKey: ['tool-types'],
+    queryFn: getToolTypes,
+  });
+
   const deleteMutation = useMutation({
     mutationFn: () => deleteTool(resolvedToolId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tools'] });
+      queryClient.removeQueries({ queryKey: ['tools', resolvedToolId] });
       router.back();
     },
   });
@@ -114,6 +121,15 @@ export function ToolDetails({ toolId }: ToolDetailsProps) {
     ));
   };
 
+  const toolTypeLabel =
+    toolTypes?.find((item) => item.key === tool.tool_type)?.label ?? tool.tool_type;
+
+  const formattedCost = tool.cost
+    ? `${tool.cost.count} ${tool.cost.piece_type}`
+    : '—';
+
+  const formattedWeight = tool.weight ? `${tool.weight.count} ${tool.weight.unit}` : '—';
+
   return (
     <ScreenContainer>
       <ScrollView contentContainerStyle={styles.scrollContent}>
@@ -122,13 +138,9 @@ export function ToolDetails({ toolId }: ToolDetailsProps) {
           <TitleText style={styles.title}>{tool.name}</TitleText>
         </View>
 
-        <BodyText style={styles.meta}>Тип: {tool.tool_type}</BodyText>
-        <BodyText style={styles.meta}>
-          Стоимость: {tool.cost.count} {tool.cost.piece_type}
-        </BodyText>
-        <BodyText style={styles.meta}>
-          Вес: {tool.weight.count} {tool.weight.unit}
-        </BodyText>
+        <BodyText style={styles.meta}>Тип: {toolTypeLabel}</BodyText>
+        <BodyText style={styles.meta}>Стоимость: {formattedCost}</BodyText>
+        <BodyText style={styles.meta}>Вес: {formattedWeight}</BodyText>
 
         {tool.description ? (
           <BodyText style={styles.description}>{tool.description}</BodyText>

@@ -5,9 +5,6 @@ import { useQuery } from '@tanstack/react-query';
 
 import { ToolForm } from '@/features/tools/components/ToolForm';
 import { getToolById } from '@/features/tools/api/getToolById';
-import { getToolTypes } from '@/features/tools/api/getToolTypes';
-import { getPieceTypes } from '@/features/dictionaries/api/getPieceTypes';
-import { getWeightUnits } from '@/features/dictionaries/api/getWeightUnits';
 import { ScreenContainer } from '@/shared/ui/ScreenContainer';
 import { BodyText } from '@/shared/ui/Typography';
 import { colors } from '@/shared/theme/colors';
@@ -30,43 +27,11 @@ export default function ToolEditScreen() {
     enabled: Boolean(resolvedId),
   });
 
-  const {
-    isLoading: isLoadingToolTypes,
-    isError: isErrorToolTypes,
-    refetch: refetchToolTypes,
-  } = useQuery({
-    queryKey: ['tool-types'],
-    queryFn: getToolTypes,
-  });
-
-  const {
-    isLoading: isLoadingPieceTypes,
-    isError: isErrorPieceTypes,
-    refetch: refetchPieceTypes,
-  } = useQuery({
-    queryKey: ['piece-types'],
-    queryFn: getPieceTypes,
-  });
-
-  const {
-    isLoading: isLoadingWeightUnits,
-    isError: isErrorWeightUnits,
-    refetch: refetchWeightUnits,
-  } = useQuery({
-    queryKey: ['weight-units'],
-    queryFn: getWeightUnits,
-  });
-
-  const isLoadingAll =
-    isLoadingTool || isLoadingToolTypes || isLoadingPieceTypes || isLoadingWeightUnits;
-  const hasError =
-    isErrorTool || isErrorToolTypes || isErrorPieceTypes || isErrorWeightUnits;
+  const isLoadingAll = isLoadingTool;
+  const hasError = isErrorTool;
 
   const handleRetry = () => {
     refetchTool();
-    refetchToolTypes();
-    refetchPieceTypes();
-    refetchWeightUnits();
   };
 
   if (isLoadingAll) {
@@ -116,7 +81,12 @@ export default function ToolEditScreen() {
       mode="edit"
       toolId={resolvedId}
       initialValues={initialValues}
-      onSuccess={() => router.back()}
+      onSuccess={(id) =>
+        router.replace({
+          pathname: '/(tabs)/library/equipment/tools/[toolId]',
+          params: { toolId: id },
+        })
+      }
     />
   );
 }
