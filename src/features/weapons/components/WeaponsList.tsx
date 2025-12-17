@@ -12,12 +12,17 @@ import { Link, type Href } from 'expo-router';
 
 import { getWeapons } from '@/features/weapons/api/getWeapons';
 import type { Weapon } from '@/features/weapons/api/types';
+import { getWeaponKinds } from '@/features/weapon-kinds/api/getWeaponKinds';
+import type { WeaponKind } from '@/features/weapon-kinds/api/types';
 import { colors } from '@/shared/theme/colors';
 import { ScreenContainer } from '@/shared/ui/ScreenContainer';
 import { BodyText, TitleText } from '@/shared/ui/Typography';
 
 function formatDamage(damage: Weapon['damage']) {
-  const base = `${damage.dice.count}d${damage.dice.dice_type} ${damage.damage_type}`;
+  const dicePrefix = damage.dice.dice_type.startsWith('d')
+    ? `${damage.dice.count}${damage.dice.dice_type}`
+    : `${damage.dice.count}d${damage.dice.dice_type}`;
+  const base = `${dicePrefix} ${damage.damage_type}`;
   if (damage.bonus_damage) {
     return `${base} +${damage.bonus_damage}`;
   }
@@ -41,6 +46,16 @@ export function WeaponsList() {
       queryFn: getWeapons,
     },
   );
+
+  const weaponKindsQuery = useQuery<WeaponKind[], Error>({
+    queryKey: ['weapon-kinds'],
+    queryFn: () => getWeaponKinds(),
+  });
+
+  const weaponKindMap = React.useMemo(() => {
+    if (!weaponKindsQuery.data) return new Map<string, string>();
+    return new Map(weaponKindsQuery.data.map((kind) => [kind.weapon_kind_id, kind.name]));
+  }, [weaponKindsQuery.data]);
 
   const weapons = data ?? [];
   const showList = !isLoading && !isError && weapons.length > 0;
@@ -92,7 +107,12 @@ export function WeaponsList() {
         <FlatList
           data={weapons}
           keyExtractor={(item) => item.weapon_id}
-          renderItem={({ item }) => <WeaponListItem weapon={item} />}
+          renderItem={({ item }) => (
+            <WeaponListItem
+              weapon={item}
+              weaponKindName={weaponKindMap.get(item.weapon_kind_id)}
+            />
+          )}
           contentContainerStyle={styles.listContainer}
           ItemSeparatorComponent={() => <View style={styles.separator} />}
           refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} />}
@@ -102,9 +122,10 @@ export function WeaponsList() {
   );
 }
 
-type WeaponListItemProps = { weapon: Weapon };
+type WeaponListItemProps = { weapon: Weapon; weaponKindName?: string };
 
-function WeaponListItem({ weapon }: WeaponListItemProps) {
+function WeaponListItem({ weapon, weaponKindName }: WeaponListItemProps) {
+
   const href = {
     pathname: '/(tabs)/library/equipment/weapons/[weaponId]',
     params: { weaponId: String(weapon.weapon_id) },
@@ -115,7 +136,7 @@ function WeaponListItem({ weapon }: WeaponListItemProps) {
       <Pressable style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}>
         <View style={styles.cardHeader}>
           <BodyText style={styles.name}>{weapon.name}</BodyText>
-          <BodyText style={styles.type}>{weapon.weapon_kind_id}</BodyText>
+          <BodyText style={styles.type}>{weaponKindName ?? weapon.weapon_kind_id}</BodyText>
         </View>
         <BodyText style={styles.meta}>Урон: {formatDamage(weapon.damage)}</BodyText>
         <BodyText style={styles.meta}>{formatWeight(weapon.weight)}</BodyText>

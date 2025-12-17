@@ -1,13 +1,6 @@
 import React from 'react';
-import {
-  ActivityIndicator,
-  Alert,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  View,
-} from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { useRouter } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { deleteWeapon } from '@/features/weapons/api/deleteWeapon';
@@ -17,74 +10,67 @@ import { getWeaponKinds } from '@/features/weapon-kinds/api/getWeaponKinds';
 import type { WeaponKind } from '@/features/weapon-kinds/api/types';
 import { getWeaponProperties } from '@/features/weapon-properties/api/getWeaponProperties';
 import type { WeaponProperty } from '@/features/weapon-properties/api/types';
+import { getWeaponPropertyNames } from '@/features/weapon-properties/api/getWeaponPropertyNames';
+import { getMaterials } from '@/features/materials/api/getMaterials';
 import { getDamageTypes } from '@/features/dictionaries/api/getDamageTypes';
 import { getDiceTypes } from '@/features/dictionaries/api/getDiceTypes';
-import { getWeightUnits } from '@/features/dictionaries/api/getWeightUnits';
 import { getPieceTypes } from '@/features/dictionaries/api/getPieceTypes';
-import { getMaterials } from '@/features/materials/api/getMaterials';
+import { getWeightUnits } from '@/features/dictionaries/api/getWeightUnits';
 import { colors } from '@/shared/theme/colors';
 import { ScreenContainer } from '@/shared/ui/ScreenContainer';
-import { BodyText, TitleText } from '@/shared/ui/Typography';
 import { BackButton } from '@/shared/ui/BackButton';
+import { BodyText, TitleText } from '@/shared/ui/Typography';
 
 interface WeaponDetailsProps {
   weaponId?: string;
 }
 
+function formatDamage(damage: Weapon['damage'], diceTypes?: Record<string, string>, damageTypes?: Record<string, string>) {
+  const diceTypeRaw = diceTypes?.[damage.dice.dice_type] ?? damage.dice.dice_type;
+  const damageTypeLabel = damageTypes?.[damage.damage_type] ?? damage.damage_type;
+  const dicePart = diceTypeRaw.startsWith('d')
+    ? `${damage.dice.count}${diceTypeRaw}`
+    : `${damage.dice.count}d${diceTypeRaw}`;
+
+  const base = `${dicePart} ${damageTypeLabel}`;
+  return damage.bonus_damage ? `${base} +${damage.bonus_damage}` : base;
+}
+
 export function WeaponDetails({ weaponId }: WeaponDetailsProps) {
-  const params = useLocalSearchParams();
-  const resolvedWeaponId = weaponId ?? String(params.weaponId ?? '');
   const router = useRouter();
   const queryClient = useQueryClient();
 
-  const {
-    data: weapon,
-    isLoading: isLoadingWeapon,
-    isError: isErrorWeapon,
-    error: weaponError,
-    refetch: refetchWeapon,
-  } = useQuery<Weapon, Error>({
-    queryKey: ['weapons', resolvedWeaponId],
-    queryFn: () => getWeaponById(resolvedWeaponId),
-    enabled: Boolean(resolvedWeaponId),
+  const hasWeaponId = Boolean(weaponId);
+
+  const weaponQuery = useQuery<Weapon, Error>({
+    queryKey: ['weapons', weaponId],
+    queryFn: () => getWeaponById(String(weaponId)),
+    enabled: hasWeaponId,
   });
 
   const weaponKindsQuery = useQuery<WeaponKind[], Error>({
     queryKey: ['weapon-kinds'],
     queryFn: () => getWeaponKinds(),
   });
+  const materialsQuery = useQuery({ queryKey: ['materials'], queryFn: getMaterials });
   const weaponPropertiesQuery = useQuery<WeaponProperty[], Error>({
     queryKey: ['weapon-properties'],
     queryFn: () => getWeaponProperties(),
   });
+  const weaponPropertyNamesQuery = useQuery({
+    queryKey: ['weapon-property-names'],
+    queryFn: getWeaponPropertyNames,
+  });
   const damageTypesQuery = useQuery({ queryKey: ['damage-types'], queryFn: getDamageTypes });
   const diceTypesQuery = useQuery({ queryKey: ['dice-types'], queryFn: getDiceTypes });
-  const weightUnitsQuery = useQuery({ queryKey: ['weight-units'], queryFn: getWeightUnits });
   const pieceTypesQuery = useQuery({ queryKey: ['piece-types'], queryFn: getPieceTypes });
-  const materialsQuery = useQuery({ queryKey: ['materials'], queryFn: getMaterials });
-
-  const isLoadingDictionaries =
-    weaponKindsQuery.isLoading ||
-    weaponPropertiesQuery.isLoading ||
-    damageTypesQuery.isLoading ||
-    diceTypesQuery.isLoading ||
-    weightUnitsQuery.isLoading ||
-    pieceTypesQuery.isLoading ||
-    materialsQuery.isLoading;
-
-  const hasDictionaryError =
-    weaponKindsQuery.isError ||
-    weaponPropertiesQuery.isError ||
-    damageTypesQuery.isError ||
-    diceTypesQuery.isError ||
-    weightUnitsQuery.isError ||
-    pieceTypesQuery.isError ||
-    materialsQuery.isError;
+  const weightUnitsQuery = useQuery({ queryKey: ['weight-units'], queryFn: getWeightUnits });
 
   const deleteMutation = useMutation({
-    mutationFn: () => deleteWeapon(resolvedWeaponId),
+    mutationFn: () => deleteWeapon(String(weaponId)),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['weapons'] });
+      queryClient.removeQueries({ queryKey: ['weapons', weaponId] });
       router.back();
     },
   });
@@ -92,22 +78,26 @@ export function WeaponDetails({ weaponId }: WeaponDetailsProps) {
   const handleDelete = () => {
     Alert.alert('Удалить оружие', 'Вы уверены, что хотите удалить оружие?', [
       { text: 'Отмена', style: 'cancel' },
-      {
-        text: 'Удалить',
-        style: 'destructive',
-        onPress: () => deleteMutation.mutate(),
-      },
+      { text: 'Удалить', style: 'destructive', onPress: () => deleteMutation.mutate() },
     ]);
   };
 
   const handleEdit = () => {
     router.push({
       pathname: '/(tabs)/library/equipment/weapons/[weaponId]/edit',
-      params: { weaponId: resolvedWeaponId },
+      params: { weaponId: String(weaponId) },
     });
   };
 
-  if (isLoadingWeapon || isLoadingDictionaries) {
+  if (!hasWeaponId) {
+    return (
+      <ScreenContainer style={styles.centered}>
+        <BodyText>Не указан идентификатор оружия.</BodyText>
+      </ScreenContainer>
+    );
+  }
+
+  if (weaponQuery.isLoading) {
     return (
       <ScreenContainer style={styles.centered}>
         <ActivityIndicator color={colors.textSecondary} />
@@ -116,32 +106,22 @@ export function WeaponDetails({ weaponId }: WeaponDetailsProps) {
     );
   }
 
-  if (isErrorWeapon || hasDictionaryError) {
+  if (weaponQuery.isError) {
     return (
       <ScreenContainer style={styles.centered}>
-        <BodyText style={[styles.helperText, styles.errorText]}>Не удалось загрузить данные</BodyText>
-        {isErrorWeapon && weaponError ? (
-          <BodyText style={styles.errorDetails}>{weaponError.message}</BodyText>
+        <BodyText style={[styles.helperText, styles.errorText]}>Не удалось загрузить оружие</BodyText>
+        {weaponQuery.error ? (
+          <BodyText style={styles.errorDetails}>{weaponQuery.error.message}</BodyText>
         ) : null}
 
-        <Pressable
-          style={styles.retryButton}
-          onPress={() => {
-            refetchWeapon();
-            weaponKindsQuery.refetch();
-            weaponPropertiesQuery.refetch();
-            damageTypesQuery.refetch();
-            diceTypesQuery.refetch();
-            weightUnitsQuery.refetch();
-            pieceTypesQuery.refetch();
-            materialsQuery.refetch();
-          }}
-        >
+        <Pressable style={styles.retryButton} onPress={() => weaponQuery.refetch()}>
           <BodyText style={styles.retryButtonText}>Повторить</BodyText>
         </Pressable>
       </ScreenContainer>
     );
   }
+
+  const weapon = weaponQuery.data;
 
   if (!weapon) {
     return (
@@ -157,28 +137,44 @@ export function WeaponDetails({ weaponId }: WeaponDetailsProps) {
   const materialName = materialsQuery.data?.find(
     (material) => material.material_id === weapon.material_id,
   )?.name;
-  const propertyNames = weapon.weapon_property_ids
-    .map(
-      (id) =>
-        weaponPropertiesQuery.data?.find((property) => property.weapon_property_id === id)?.name ??
+
+  const weaponPropertiesMap = React.useMemo(() => {
+    if (!weaponPropertiesQuery.data) return new Map<string, WeaponProperty>();
+    return new Map(
+      weaponPropertiesQuery.data.map((property) => [property.weapon_property_id, property]),
+    );
+  }, [weaponPropertiesQuery.data]);
+
+  const weaponPropertyNameMap = React.useMemo(() => {
+    if (!weaponPropertyNamesQuery.data) return new Map<string, string>();
+    return new Map(
+      weaponPropertyNamesQuery.data.map(({ key, label }) => [key, label || key]),
+    );
+  }, [weaponPropertyNamesQuery.data]);
+
+  const propertiesList = weapon.weapon_property_ids
+    .map((id) => {
+      const property = weaponPropertiesMap.get(id);
+      if (!property) return { id, label: id };
+
+      const readableLabel = weaponPropertyNameMap.get(property.name) ?? property.name;
+      return {
         id,
-    )
+        label: readableLabel,
+        technicalName: property.name,
+      };
+    })
     .filter(Boolean);
 
-  const damageTypeLabel = damageTypesQuery.data?.[weapon.damage.damage_type] ?? weapon.damage.damage_type;
-  const diceTypeLabel = diceTypesQuery.data?.[weapon.damage.dice.dice_type] ?? weapon.damage.dice.dice_type;
-  const pieceTypeLabel = weapon.cost
-    ? pieceTypesQuery.data?.[weapon.cost.piece_type] ?? weapon.cost.piece_type
-    : null;
-  const weightUnitLabel = weapon.weight
-    ? weightUnitsQuery.data?.[weapon.weight.unit] ?? weapon.weight.unit
-    : null;
-
-  const damageText = `${weapon.damage.dice.count}${diceTypeLabel} ${damageTypeLabel}${
-    weapon.damage.bonus_damage ? ` +${weapon.damage.bonus_damage}` : ''
-  }`;
-  const costText = weapon.cost ? `${weapon.cost.count} ${pieceTypeLabel}` : '—';
-  const weightText = weapon.weight ? `${weapon.weight.count} ${weightUnitLabel}` : '—';
+  const costText = weapon.cost
+    ? `${weapon.cost.count} ${
+        pieceTypesQuery.data?.[weapon.cost.piece_type] ?? weapon.cost.piece_type
+      }`
+    : '—';
+  const weightText = weapon.weight
+    ? `${weapon.weight.count} ${weightUnitsQuery.data?.[weapon.weight.unit] ?? weapon.weight.unit}`
+    : '—';
+  const damageText = formatDamage(weapon.damage, diceTypesQuery.data, damageTypesQuery.data);
 
   return (
     <ScreenContainer>
@@ -188,8 +184,17 @@ export function WeaponDetails({ weaponId }: WeaponDetailsProps) {
           <TitleText style={styles.title}>{weapon.name}</TitleText>
         </View>
 
-        <BodyText style={styles.meta}>Вид оружия: {weaponKindName ?? weapon.weapon_kind_id}</BodyText>
-        <BodyText style={styles.meta}>Материал: {materialName ?? weapon.material_id}</BodyText>
+        <View style={styles.infoGrid}>
+          <View style={styles.infoBlock}>
+            <BodyText style={styles.labelText}>Вид оружия</BodyText>
+            <BodyText style={styles.helperText}>{weaponKindName ?? weapon.weapon_kind_id}</BodyText>
+          </View>
+
+          <View style={styles.infoBlock}>
+            <BodyText style={styles.labelText}>Материал</BodyText>
+            <BodyText style={styles.helperText}>{materialName ?? weapon.material_id}</BodyText>
+          </View>
+        </View>
 
         {weapon.description ? (
           <BodyText style={styles.description}>{weapon.description}</BodyText>
@@ -200,23 +205,28 @@ export function WeaponDetails({ weaponId }: WeaponDetailsProps) {
           <BodyText style={styles.helperText}>{damageText}</BodyText>
         </View>
 
-        <View style={styles.infoBlock}>
-          <BodyText style={styles.labelText}>Стоимость</BodyText>
-          <BodyText style={styles.helperText}>{costText}</BodyText>
-        </View>
+        <View style={styles.infoGrid}>
+          <View style={styles.infoBlock}>
+            <BodyText style={styles.labelText}>Стоимость</BodyText>
+            <BodyText style={styles.helperText}>{costText}</BodyText>
+          </View>
 
-        <View style={styles.infoBlock}>
-          <BodyText style={styles.labelText}>Вес</BodyText>
-          <BodyText style={styles.helperText}>{weightText}</BodyText>
+          <View style={styles.infoBlock}>
+            <BodyText style={styles.labelText}>Вес</BodyText>
+            <BodyText style={styles.helperText}>{weightText}</BodyText>
+          </View>
         </View>
 
         <View style={styles.section}>
           <BodyText style={styles.sectionTitle}>Свойства оружия</BodyText>
-          {propertyNames.length > 0 ? (
+          {propertiesList.length > 0 ? (
             <View style={styles.chipsContainer}>
-              {propertyNames.map((name) => (
-                <View key={name} style={styles.chip}>
-                  <BodyText style={styles.chipText}>{name}</BodyText>
+              {propertiesList.map((property) => (
+                <View key={property.id} style={styles.chip}>
+                  <BodyText style={styles.chipTitle}>{property.label}</BodyText>
+                  {property.technicalName && property.technicalName !== property.label ? (
+                    <BodyText style={styles.chipSubtitle}>{property.technicalName}</BodyText>
+                  ) : null}
                 </View>
               ))}
             </View>
@@ -291,15 +301,16 @@ const styles = StyleSheet.create({
   title: {
     flex: 1,
   },
-  meta: {
-    fontSize: 14,
-    color: colors.textSecondary,
-  },
   description: {
     fontSize: 14,
     color: colors.textPrimary,
   },
+  infoGrid: {
+    flexDirection: 'row',
+    gap: 12,
+  },
   infoBlock: {
+    flex: 1,
     gap: 4,
   },
   labelText: {
@@ -307,7 +318,6 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
   },
   section: {
-    marginTop: 8,
     gap: 8,
   },
   sectionTitle: {
@@ -322,13 +332,18 @@ const styles = StyleSheet.create({
   },
   chip: {
     paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 16,
+    paddingVertical: 8,
+    borderRadius: 14,
     backgroundColor: colors.accentSoft,
   },
-  chipText: {
+  chipTitle: {
     color: colors.textPrimary,
     fontSize: 12,
+    fontWeight: '700',
+  },
+  chipSubtitle: {
+    color: colors.textSecondary,
+    fontSize: 11,
   },
   actionsRow: {
     flexDirection: 'row',
