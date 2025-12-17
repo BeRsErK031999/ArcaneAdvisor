@@ -11,7 +11,8 @@ import { useQuery } from '@tanstack/react-query';
 import { Link, type Href } from 'expo-router';
 
 import { getWeaponProperties } from '@/features/weapon-properties/api/getWeaponProperties';
-import type { WeaponProperty } from '@/features/weapon-properties/api/types';
+import { getWeaponPropertyNames } from '@/features/weapon-properties/api/getWeaponPropertyNames';
+import type { WeaponProperty, WeaponPropertyNameOption } from '@/features/weapon-properties/api/types';
 import { colors } from '@/shared/theme/colors';
 import { ScreenContainer } from '@/shared/ui/ScreenContainer';
 import { BodyText, TitleText } from '@/shared/ui/Typography';
@@ -24,6 +25,20 @@ export function WeaponPropertiesList() {
     queryKey: ['weapon-properties'],
     queryFn: () => getWeaponProperties(),
   });
+
+  const { data: propertyNames } = useQuery<WeaponPropertyNameOption[], Error>({
+    queryKey: ['weapon-property-names'],
+    queryFn: getWeaponPropertyNames,
+  });
+
+  const propertyNamesMap = React.useMemo(() => {
+    if (!propertyNames) return {} as Record<string, string>;
+
+    return propertyNames.reduce<Record<string, string>>((acc, option) => {
+      acc[option.key] = option.label;
+      return acc;
+    }, {});
+  }, [propertyNames]);
 
   const properties = data ?? [];
 
@@ -80,7 +95,12 @@ export function WeaponPropertiesList() {
         <FlatList
           data={properties}
           keyExtractor={(item) => item.weapon_property_id}
-          renderItem={({ item }) => <WeaponPropertyListItem property={item} />}
+          renderItem={({ item }) => (
+            <WeaponPropertyListItem
+              property={item}
+              readableLabel={propertyNamesMap[item.name]}
+            />
+          )}
           contentContainerStyle={styles.listContainer}
           ItemSeparatorComponent={() => <View style={styles.separator} />}
           refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} />}
@@ -92,9 +112,10 @@ export function WeaponPropertiesList() {
 
 type WeaponPropertyListItemProps = {
   property: WeaponProperty;
+  readableLabel?: string;
 };
 
-function WeaponPropertyListItem({ property }: WeaponPropertyListItemProps) {
+function WeaponPropertyListItem({ property, readableLabel }: WeaponPropertyListItemProps) {
   const href = {
     pathname: '/(tabs)/library/equipment/weapon-properties/[weaponPropertyId]',
     params: { weaponPropertyId: String(property.weapon_property_id) },
@@ -103,7 +124,8 @@ function WeaponPropertyListItem({ property }: WeaponPropertyListItemProps) {
   return (
     <Link href={href} asChild>
       <Pressable style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}>
-        <BodyText style={styles.name}>{property.name}</BodyText>
+        <BodyText style={styles.name}>{readableLabel ?? property.name}</BodyText>
+        <BodyText style={styles.key}>{property.name}</BodyText>
         <BodyText style={styles.description} numberOfLines={2}>
           {property.description}
         </BodyText>
@@ -175,6 +197,10 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: colors.textPrimary,
+  },
+  key: {
+    fontSize: 12,
+    color: colors.textMuted,
   },
   description: {
     fontSize: 14,

@@ -1,7 +1,7 @@
 import React from 'react';
 import { ActivityIndicator, Pressable, StyleSheet } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
 
 import { getWeaponPropertyById } from '@/features/weapon-properties/api/getWeaponPropertyById';
 import type { WeaponProperty, WeaponPropertyCreateInput } from '@/features/weapon-properties/api/types';
@@ -12,7 +12,6 @@ import { BodyText } from '@/shared/ui/Typography';
 
 export default function EditWeaponPropertyScreen() {
   const { weaponPropertyId } = useLocalSearchParams<{ weaponPropertyId: string }>();
-  const router = useRouter();
   const resolvedId = weaponPropertyId ? String(weaponPropertyId) : '';
 
   const { data, isLoading, isError, error, refetch } = useQuery<WeaponProperty, Error>({
@@ -71,8 +70,6 @@ export default function EditWeaponPropertyScreen() {
       weaponPropertyId={resolvedId}
       initialValues={initialValues}
       showBackButton
-      onBackPress={() => router.back()}
-      onSuccess={() => router.back()}
     />
   );
 }

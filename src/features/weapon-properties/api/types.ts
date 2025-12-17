@@ -59,12 +59,12 @@ export interface WeaponPropertyNameOption {
 
 // Zod-схема формы создания/редактирования
 const RangeSchema = z.object({
-  count: z.number().nonnegative(),
+  count: z.number().int().min(1, 'Введите число больше 0'),
   unit: z.string().min(1),
 });
 
 const DiceSchema = z.object({
-  count: z.number().positive(),
+  count: z.number().int().min(1, 'Введите число больше 0'),
   dice_type: z.string().min(1),
 });
 
@@ -89,6 +89,17 @@ export const WeaponPropertyCreateSchema = z.object({
       dice: DiceSchema,
     })
     .nullable(),
+}).superRefine((data, ctx) => {
+  const baseRange = data.base_range?.range;
+  const maxRange = data.max_range?.range;
+
+  if (baseRange && maxRange && baseRange.unit === maxRange.unit && maxRange.count < baseRange.count) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Максимальная дистанция должна быть не меньше базовой',
+      path: ['max_range', 'range', 'count'],
+    });
+  }
 });
 
 export type WeaponPropertyCreateInput = z.infer<typeof WeaponPropertyCreateSchema>;

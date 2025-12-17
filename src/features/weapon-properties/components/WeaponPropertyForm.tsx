@@ -1,6 +1,7 @@
 import React from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Pressable,
   StyleSheet,
   Switch,
@@ -11,6 +12,7 @@ import {
 import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useRouter } from 'expo-router';
 
 import { createWeaponProperty } from '@/features/weapon-properties/api/createWeaponProperty';
 import { getWeaponPropertyNames } from '@/features/weapon-properties/api/getWeaponPropertyNames';
@@ -18,6 +20,7 @@ import { updateWeaponProperty } from '@/features/weapon-properties/api/updateWea
 import {
   WeaponPropertyCreateSchema,
   type WeaponPropertyCreateInput,
+  type WeaponProperty,
   type WeaponPropertyNameOption,
 } from '@/features/weapon-properties/api/types';
 import { getLengthUnits } from '@/features/dictionaries/api/getLengthUnits';
@@ -34,7 +37,7 @@ interface WeaponPropertyFormProps {
   mode?: WeaponPropertyFormMode; // по умолчанию 'create'
   weaponPropertyId?: string; // обязателен в режиме 'edit'
   initialValues?: WeaponPropertyCreateInput;
-  onSuccess?: () => void;
+  onSuccess?: (createdId?: string) => void;
   submitLabel?: string;
   showBackButton?: boolean;
   onBackPress?: () => void;
@@ -58,16 +61,19 @@ export function WeaponPropertyForm({
   onBackPress,
 }: WeaponPropertyFormProps) {
   const queryClient = useQueryClient();
+  const router = useRouter();
 
   const {
     control,
     handleSubmit,
-    formState: { errors },
+    formState: { errors, isDirty },
     reset,
     watch,
     setValue,
   } = useForm<WeaponPropertyCreateInput>({
     resolver: zodResolver(WeaponPropertyCreateSchema),
+    mode: 'onBlur',
+    reValidateMode: 'onChange',
     defaultValues: initialValues ?? defaultValues,
   });
 
@@ -115,17 +121,17 @@ export function WeaponPropertyForm({
     [diceTypesQuery.data],
   );
 
-  const createMutation = useMutation({
+  const createMutation = useMutation<WeaponProperty, Error, WeaponPropertyCreateInput>({
     mutationFn: createWeaponProperty,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['weapon-properties'] });
     },
   });
 
-  const updateMutation = useMutation({
-    mutationFn: (values: WeaponPropertyCreateInput) => {
+  const updateMutation = useMutation<void, Error, WeaponPropertyCreateInput>({
+    mutationFn: async (values: WeaponPropertyCreateInput) => {
       if (!weaponPropertyId) {
-        return Promise.reject(new Error('Идентификатор свойства не передан'));
+        throw new Error('Идентификатор свойства не передан');
       }
       return updateWeaponProperty(weaponPropertyId, values);
     },
@@ -149,6 +155,46 @@ export function WeaponPropertyForm({
   const getDefaultLengthUnit = () => lengthUnitOptions[0]?.key ?? 'ft';
   const getDefaultDiceType = () => diceTypeOptions[0]?.key ?? 'd6';
 
+  const navigateBack = React.useCallback(() => {
+    if (onBackPress) {
+      onBackPress();
+      return;
+    }
+
+    router.back();
+  }, [onBackPress, router]);
+
+  const handleBackPress = React.useCallback(() => {
+    if (isDirty) {
+      Alert.alert(
+        'Есть несохранённые изменения',
+        'Есть несохранённые изменения. Выйти без сохранения?',
+        [
+          { text: 'Остаться', style: 'cancel' },
+          { text: 'Выйти', style: 'destructive', onPress: navigateBack },
+        ],
+      );
+      return;
+    }
+
+    navigateBack();
+  }, [isDirty, navigateBack]);
+
+  const handleSecondHandDiceCountChange = (text: string) => {
+    const trimmed = text.trim();
+    if (trimmed === '') return;
+
+    const parsed = Number(trimmed);
+    if (Number.isNaN(parsed)) return;
+
+    setValue('second_hand_dice', {
+      dice: {
+        count: parsed,
+        dice_type: secondHandDice?.dice.dice_type ?? getDefaultDiceType(),
+      },
+    });
+  };
+
   const onSubmit = async (values: WeaponPropertyCreateInput) => {
     setSubmitError(null);
     try {
@@ -157,13 +203,24 @@ export function WeaponPropertyForm({
           setSubmitError('Не указан идентификатор свойства оружия.');
           return;
         }
+
         await updateMutation.mutateAsync(values);
-      } else {
-        await createMutation.mutateAsync(values);
-        reset(defaultValues);
+        onSuccess?.(weaponPropertyId);
+
+        router.replace({
+          pathname: '/(tabs)/library/equipment/weapon-properties/[weaponPropertyId]',
+          params: { weaponPropertyId },
+        });
+        return;
       }
 
-      onSuccess?.();
+      const created = await createMutation.mutateAsync(values);
+      onSuccess?.(created.weapon_property_id);
+
+      router.replace({
+        pathname: '/(tabs)/library/equipment/weapon-properties/[weaponPropertyId]',
+        params: { weaponPropertyId: created.weapon_property_id },
+      });
     } catch (error) {
       console.error('Failed to submit weapon property form', error);
       setSubmitError(
@@ -182,69 +239,81 @@ export function WeaponPropertyForm({
     onChangeUnit: (unit: string) => void,
     countError?: string,
     unitError?: string,
-  ) => (
-    <View style={styles.section}>
-      <View style={styles.switchRow}>
-        <Text style={styles.label}>{label}</Text>
-        <Switch
-          value={Boolean(rangeValue)}
-          onValueChange={onChangeSwitch}
-          trackColor={{ false: colors.borderMuted, true: colors.accentSoft }}
-          thumbColor={colors.accent}
-        />
-      </View>
+  ) => {
+    const handleCountChange = (text: string) => {
+      const trimmed = text.trim();
+      if (trimmed === '') return;
 
-      {rangeValue ? (
-        <View style={styles.rangeRow}>
-          <TextInput
-            value={rangeValue.range.count.toString()}
-            onChangeText={(text) => onChangeCount(Number(text) || 0)}
-            keyboardType="numeric"
-            inputMode="numeric"
-            style={[styles.input, styles.rangeInput]}
-            placeholder="10"
-            placeholderTextColor={colors.inputPlaceholder}
+      const parsed = Number(trimmed);
+      if (Number.isNaN(parsed)) return;
+
+      onChangeCount(parsed);
+    };
+
+    return (
+      <View style={styles.section}>
+        <View style={styles.switchRow}>
+          <Text style={styles.label}>{label}</Text>
+          <Switch
+            value={Boolean(rangeValue)}
+            onValueChange={onChangeSwitch}
+            trackColor={{ false: colors.borderMuted, true: colors.accentSoft }}
+            thumbColor={colors.accent}
           />
-
-          <View style={styles.unitList}>
-            {lengthUnitOptions.map((option) => {
-              const isSelected = option.key === rangeValue.range.unit;
-
-              return (
-                <Pressable
-                  key={option.key}
-                  style={[
-                    styles.unitChip,
-                    isSelected && styles.unitChipSelected,
-                  ]}
-                  onPress={() => onChangeUnit(option.key)}
-                >
-                  <BodyText style={isSelected ? styles.unitChipTextSelected : styles.unitChipText}>
-                    {option.label}
-                  </BodyText>
-                </Pressable>
-              );
-            })}
-          </View>
         </View>
-      ) : null}
 
-      <FormErrorText>{countError}</FormErrorText>
-      <FormErrorText>{unitError}</FormErrorText>
-    </View>
-  );
+        {rangeValue ? (
+          <View style={styles.rangeRow}>
+            <TextInput
+              value={rangeValue.range.count.toString()}
+              onChangeText={handleCountChange}
+              keyboardType="numeric"
+              inputMode="numeric"
+              style={[styles.input, styles.rangeInput]}
+              placeholder="10"
+              placeholderTextColor={colors.inputPlaceholder}
+            />
+
+            <View style={styles.unitList}>
+              {lengthUnitOptions.map((option) => {
+                const isSelected = option.key === rangeValue.range.unit;
+
+                return (
+                  <Pressable
+                    key={option.key}
+                    style={[
+                      styles.unitChip,
+                      isSelected && styles.unitChipSelected,
+                    ]}
+                    onPress={() => onChangeUnit(option.key)}
+                  >
+                    <BodyText style={isSelected ? styles.unitChipTextSelected : styles.unitChipText}>
+                      {option.label}
+                    </BodyText>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </View>
+        ) : null}
+
+        <FormErrorText>{countError}</FormErrorText>
+        <FormErrorText>{unitError}</FormErrorText>
+      </View>
+    );
+  };
 
   return (
     <FormScreenLayout
       title={formTitle}
       showBackButton={showBackButton}
-      onBackPress={onBackPress}
+      onBackPress={handleBackPress}
     >
       {submitError ? <Text style={styles.submitError}>{submitError}</Text> : null}
 
       <View style={styles.formCard}>
         <View style={styles.section}>
-          <Text style={styles.label}>Ключ свойства</Text>
+          <Text style={styles.label}>Ключ свойства *</Text>
 
           {isLoadingNames && (
             <View style={styles.stateRow}>
@@ -272,7 +341,7 @@ export function WeaponPropertyForm({
               control={control}
               name="name"
               render={({ field: { value, onChange } }) => (
-                <View style={styles.chipsRow}>
+                <View style={[styles.chipsRow, errors.name && styles.chipsRowError]}>
                   {propertyNameOptions.map((option) => {
                     const isSelected = option.key === value;
 
@@ -401,14 +470,7 @@ export function WeaponPropertyForm({
             <View style={styles.rangeRow}>
               <TextInput
                 value={secondHandDice.dice.count.toString()}
-                onChangeText={(text) =>
-                  setValue('second_hand_dice', {
-                    dice: {
-                      count: Number(text) || 0,
-                      dice_type: secondHandDice.dice.dice_type,
-                    },
-                  })
-                }
+                onChangeText={handleSecondHandDiceCountChange}
                 keyboardType="numeric"
                 inputMode="numeric"
                 style={[styles.input, styles.rangeInput]}
@@ -495,6 +557,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
+  },
+  chipsRowError: {
+    borderColor: colors.error,
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 6,
+    backgroundColor: '#331414',
   },
   chip: {
     paddingVertical: 10,
