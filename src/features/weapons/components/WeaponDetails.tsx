@@ -75,6 +75,20 @@ export function WeaponDetails({ weaponId }: WeaponDetailsProps) {
     },
   });
 
+  const weaponPropertiesMap = React.useMemo(() => {
+    if (!weaponPropertiesQuery.data) return new Map<string, WeaponProperty>();
+    return new Map(
+      weaponPropertiesQuery.data.map((property) => [property.weapon_property_id, property]),
+    );
+  }, [weaponPropertiesQuery.data]);
+
+  const weaponPropertyNameMap = React.useMemo(() => {
+    if (!weaponPropertyNamesQuery.data) return new Map<string, string>();
+    return new Map(
+      weaponPropertyNamesQuery.data.map(({ key, label }) => [key, label || key]),
+    );
+  }, [weaponPropertyNamesQuery.data]);
+
   const handleDelete = () => {
     Alert.alert('Удалить оружие', 'Вы уверены, что хотите удалить оружие?', [
       { text: 'Отмена', style: 'cancel' },
@@ -137,20 +151,6 @@ export function WeaponDetails({ weaponId }: WeaponDetailsProps) {
   const materialName = materialsQuery.data?.find(
     (material) => material.material_id === weapon.material_id,
   )?.name;
-
-  const weaponPropertiesMap = React.useMemo(() => {
-    if (!weaponPropertiesQuery.data) return new Map<string, WeaponProperty>();
-    return new Map(
-      weaponPropertiesQuery.data.map((property) => [property.weapon_property_id, property]),
-    );
-  }, [weaponPropertiesQuery.data]);
-
-  const weaponPropertyNameMap = React.useMemo(() => {
-    if (!weaponPropertyNamesQuery.data) return new Map<string, string>();
-    return new Map(
-      weaponPropertyNamesQuery.data.map(({ key, label }) => [key, label || key]),
-    );
-  }, [weaponPropertyNamesQuery.data]);
 
   const propertiesList = weapon.weapon_property_ids
     .map((id) => {

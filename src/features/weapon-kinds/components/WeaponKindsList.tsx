@@ -37,7 +37,6 @@ export function WeaponKindsList() {
     data: weaponTypes,
     isLoading: isLoadingWeaponTypes,
     isError: isErrorWeaponTypes,
-    error: weaponTypesError,
     refetch: refetchWeaponTypes,
   } = useQuery<WeaponTypeOption[], Error>({
     queryKey: ['weapon-types'],

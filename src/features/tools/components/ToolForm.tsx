@@ -221,7 +221,11 @@ export function ToolForm({
           return;
         }
         await updateMutation.mutateAsync(values);
-        onSuccess ? onSuccess(toolId) : navigateToDetails(toolId);
+        if (onSuccess) {
+          onSuccess(toolId);
+        } else {
+          navigateToDetails(toolId);
+        }
         return;
       }
 
