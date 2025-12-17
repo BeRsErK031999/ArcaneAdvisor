@@ -32,7 +32,7 @@ export const WeaponCreateSchema = z.object({
   description: z.string().default(''),
   cost: z
     .object({
-      count: z.number().nonnegative(),
+      count: z.number().int().min(1, 'Введите число больше 0'),
       piece_type: z.string().min(1),
     })
     .nullable(),
@@ -46,7 +46,7 @@ export const WeaponCreateSchema = z.object({
   }),
   weight: z
     .object({
-      count: z.number().nonnegative(),
+      count: z.number().int().min(1, 'Введите число больше 0'),
       unit: z.string().min(1),
     })
     .nullable(),

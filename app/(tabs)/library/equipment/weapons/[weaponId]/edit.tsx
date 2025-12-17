@@ -6,15 +6,6 @@ import { useQuery } from '@tanstack/react-query';
 import { WeaponForm } from '@/features/weapons/components/WeaponForm';
 import { getWeaponById } from '@/features/weapons/api/getWeaponById';
 import type { WeaponCreateInput } from '@/features/weapons/api/types';
-import { getWeaponKinds } from '@/features/weapon-kinds/api/getWeaponKinds';
-import type { WeaponKind } from '@/features/weapon-kinds/api/types';
-import { getWeaponProperties } from '@/features/weapon-properties/api/getWeaponProperties';
-import type { WeaponProperty } from '@/features/weapon-properties/api/types';
-import { getMaterials } from '@/features/materials/api/getMaterials';
-import { getPieceTypes } from '@/features/dictionaries/api/getPieceTypes';
-import { getDiceTypes } from '@/features/dictionaries/api/getDiceTypes';
-import { getDamageTypes } from '@/features/dictionaries/api/getDamageTypes';
-import { getWeightUnits } from '@/features/dictionaries/api/getWeightUnits';
 import { ScreenContainer } from '@/shared/ui/ScreenContainer';
 import { BodyText } from '@/shared/ui/Typography';
 import { colors } from '@/shared/theme/colors';
@@ -30,49 +21,12 @@ export default function WeaponEditScreen() {
     enabled: Boolean(resolvedId),
   });
 
-  const weaponKindsQuery = useQuery<WeaponKind[], Error>({
-    queryKey: ['weapon-kinds'],
-    queryFn: () => getWeaponKinds(),
-  });
-  const weaponPropertiesQuery = useQuery<WeaponProperty[], Error>({
-    queryKey: ['weapon-properties'],
-    queryFn: () => getWeaponProperties(),
-  });
-  const materialsQuery = useQuery({ queryKey: ['materials'], queryFn: getMaterials });
-  const pieceTypesQuery = useQuery({ queryKey: ['piece-types'], queryFn: getPieceTypes });
-  const diceTypesQuery = useQuery({ queryKey: ['dice-types'], queryFn: getDiceTypes });
-  const damageTypesQuery = useQuery({ queryKey: ['damage-types'], queryFn: getDamageTypes });
-  const weightUnitsQuery = useQuery({ queryKey: ['weight-units'], queryFn: getWeightUnits });
+  const isLoadingAll = weaponQuery.isLoading;
 
-  const isLoadingAll =
-    weaponQuery.isLoading ||
-    weaponKindsQuery.isLoading ||
-    weaponPropertiesQuery.isLoading ||
-    materialsQuery.isLoading ||
-    pieceTypesQuery.isLoading ||
-    diceTypesQuery.isLoading ||
-    damageTypesQuery.isLoading ||
-    weightUnitsQuery.isLoading;
-
-  const hasError =
-    weaponQuery.isError ||
-    weaponKindsQuery.isError ||
-    weaponPropertiesQuery.isError ||
-    materialsQuery.isError ||
-    pieceTypesQuery.isError ||
-    diceTypesQuery.isError ||
-    damageTypesQuery.isError ||
-    weightUnitsQuery.isError;
+  const hasError = weaponQuery.isError;
 
   const handleRetry = () => {
     weaponQuery.refetch();
-    weaponKindsQuery.refetch();
-    weaponPropertiesQuery.refetch();
-    materialsQuery.refetch();
-    pieceTypesQuery.refetch();
-    diceTypesQuery.refetch();
-    damageTypesQuery.refetch();
-    weightUnitsQuery.refetch();
   };
 
   if (isLoadingAll) {
@@ -123,7 +77,12 @@ export default function WeaponEditScreen() {
       weaponId={resolvedId}
       showBackButton
       initialValues={initialValues}
-      onSuccess={() => router.back()}
+      onSuccess={() =>
+        router.replace({
+          pathname: '/(tabs)/library/equipment/weapons/[weaponId]',
+          params: { weaponId: resolvedId },
+        })
+      }
     />
   );
 }

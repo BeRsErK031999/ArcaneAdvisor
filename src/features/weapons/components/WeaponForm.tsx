@@ -1,6 +1,7 @@
 import React from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -21,6 +22,7 @@ import { getWeaponKinds } from '@/features/weapon-kinds/api/getWeaponKinds';
 import type { WeaponKind } from '@/features/weapon-kinds/api/types';
 import { getWeaponProperties } from '@/features/weapon-properties/api/getWeaponProperties';
 import type { WeaponProperty } from '@/features/weapon-properties/api/types';
+import { getWeaponPropertyNames } from '@/features/weapon-properties/api/getWeaponPropertyNames';
 import { getMaterials } from '@/features/materials/api/getMaterials';
 import { getPieceTypes } from '@/features/dictionaries/api/getPieceTypes';
 import { getDiceTypes } from '@/features/dictionaries/api/getDiceTypes';
@@ -37,7 +39,7 @@ interface WeaponFormProps {
   mode: 'create' | 'edit';
   weaponId?: string;
   initialValues?: WeaponCreateInput;
-  onSuccess?: () => void;
+  onSuccess?: (weaponId: string) => void;
   showBackButton?: boolean;
 }
 
@@ -75,12 +77,14 @@ export function WeaponForm({
     control,
     handleSubmit,
     reset,
-    formState: { errors },
+    formState: { errors, isDirty },
     setValue,
     watch,
   } = useForm<WeaponCreateInput>({
     resolver: zodResolver(WeaponCreateSchema),
     defaultValues: formDefaultValues,
+    mode: 'onBlur',
+    reValidateMode: 'onChange',
   });
 
   React.useEffect(() => {
@@ -106,6 +110,10 @@ export function WeaponForm({
     queryKey: ['weapon-properties'],
     queryFn: () => getWeaponProperties(),
   });
+  const weaponPropertyNamesQuery = useQuery({
+    queryKey: ['weapon-property-names'],
+    queryFn: getWeaponPropertyNames,
+  });
   const materialsQuery = useQuery({ queryKey: ['materials'], queryFn: getMaterials });
   const pieceTypesQuery = useQuery({ queryKey: ['piece-types'], queryFn: getPieceTypes });
   const diceTypesQuery = useQuery({ queryKey: ['dice-types'], queryFn: getDiceTypes });
@@ -120,6 +128,7 @@ export function WeaponForm({
   const isLoadingDictionaries =
     weaponKindsQuery.isLoading ||
     weaponPropertiesQuery.isLoading ||
+    weaponPropertyNamesQuery.isLoading ||
     materialsQuery.isLoading ||
     pieceTypesQuery.isLoading ||
     diceTypesQuery.isLoading ||
@@ -129,6 +138,7 @@ export function WeaponForm({
   const hasDictionaryError =
     weaponKindsQuery.isError ||
     weaponPropertiesQuery.isError ||
+    weaponPropertyNamesQuery.isError ||
     materialsQuery.isError ||
     pieceTypesQuery.isError ||
     diceTypesQuery.isError ||
@@ -149,6 +159,13 @@ export function WeaponForm({
     () => weaponPropertiesQuery.data ?? [],
     [weaponPropertiesQuery.data],
   );
+
+  const weaponPropertyNameMap = React.useMemo(() => {
+    if (!weaponPropertyNamesQuery.data) return new Map<string, string>();
+    return new Map(
+      weaponPropertyNamesQuery.data.map(({ key, label }) => [key, label || key]),
+    );
+  }, [weaponPropertyNamesQuery.data]);
 
   const pieceTypeOptions: SelectOption[] = React.useMemo(
     () =>
@@ -194,6 +211,9 @@ export function WeaponForm({
     [weightUnitsQuery.data],
   );
 
+  const defaultPieceType = pieceTypeOptions[0]?.value ?? '';
+  const defaultWeightUnit = weightUnitOptions[0]?.value ?? '';
+
   const createMutation = useMutation({
     mutationFn: createWeapon,
     onSuccess: () => {
@@ -216,6 +236,21 @@ export function WeaponForm({
     },
   });
 
+  const handleNumericChange = (
+    text: string,
+    onChange: (value: number | undefined) => void,
+  ) => {
+    if (text === '') {
+      onChange(undefined);
+      return;
+    }
+
+    const parsed = Number(text);
+    if (!Number.isNaN(parsed)) {
+      onChange(parsed);
+    }
+  };
+
   const selectedProperties = watch('weapon_property_ids');
   const handleToggleProperty = (propertyId: string) => {
     const nextValue = selectedProperties.includes(propertyId)
@@ -229,8 +264,12 @@ export function WeaponForm({
     setHasCost(value);
     if (!value) {
       setValue('cost', null);
-    } else if (!watch('cost')) {
-      setValue('cost', { count: 0, piece_type: '' });
+    } else {
+      const currentCost = watch('cost');
+      setValue('cost', {
+        count: currentCost?.count && currentCost.count > 0 ? currentCost.count : 1,
+        piece_type: currentCost?.piece_type || defaultPieceType,
+      });
     }
   };
 
@@ -238,9 +277,25 @@ export function WeaponForm({
     setHasWeight(value);
     if (!value) {
       setValue('weight', null);
-    } else if (!watch('weight')) {
-      setValue('weight', { count: 0, unit: '' });
+    } else {
+      const currentWeight = watch('weight');
+      setValue('weight', {
+        count: currentWeight?.count && currentWeight.count > 0 ? currentWeight.count : 1,
+        unit: currentWeight?.unit || defaultWeightUnit,
+      });
     }
+  };
+
+  const handleBackPress = () => {
+    if (isDirty) {
+      Alert.alert('Есть несохранённые изменения', 'Выйти без сохранения?', [
+        { text: 'Отмена', style: 'cancel' },
+        { text: 'Выйти', style: 'destructive', onPress: () => router.back() },
+      ]);
+      return;
+    }
+
+    router.back();
   };
 
   const onSubmit = async (values: WeaponCreateInput) => {
@@ -256,16 +311,28 @@ export function WeaponForm({
       if (mode === 'edit') {
         await updateMutation.mutateAsync(payload);
       } else {
-        await createMutation.mutateAsync(payload);
-        reset(defaultValues);
-        setHasCost(false);
-        setHasWeight(false);
+        const createdWeapon = await createMutation.mutateAsync(payload);
+        if (!createdWeapon.weapon_id) {
+          throw new Error('Не удалось получить идентификатор созданного оружия');
+        }
+        if (onSuccess) {
+          onSuccess(createdWeapon.weapon_id);
+        } else {
+          router.replace({
+            pathname: '/(tabs)/library/equipment/weapons/[weaponId]',
+            params: { weaponId: createdWeapon.weapon_id },
+          });
+        }
+        return;
       }
 
       if (onSuccess) {
-        onSuccess();
+        onSuccess(weaponId ?? '');
       } else {
-        router.back();
+        router.replace({
+          pathname: '/(tabs)/library/equipment/weapons/[weaponId]',
+          params: { weaponId: weaponId ?? '' },
+        });
       }
     } catch (error) {
       console.error('Weapon form submit error:', error);
@@ -298,6 +365,7 @@ export function WeaponForm({
             diceTypesQuery.refetch();
             damageTypesQuery.refetch();
             weightUnitsQuery.refetch();
+            weaponPropertyNamesQuery.refetch();
           }}
         >
           <BodyText style={styles.retryButtonText}>Повторить</BodyText>
@@ -314,7 +382,7 @@ export function WeaponForm({
       <FormScreenLayout
         title={formTitle}
         showBackButton={showBackButton}
-        onBackPress={() => router.back()}
+        onBackPress={handleBackPress}
       >
         <View style={styles.missingBlock}>
           <BodyText style={styles.sectionTitle}>Нельзя создать оружие</BodyText>
@@ -362,7 +430,11 @@ export function WeaponForm({
   }
 
   return (
-    <FormScreenLayout title={formTitle} showBackButton={showBackButton}>
+    <FormScreenLayout
+      title={formTitle}
+      showBackButton={showBackButton}
+      onBackPress={handleBackPress}
+    >
       <View style={styles.section}>
         <BodyText style={styles.sectionTitle}>Основное</BodyText>
 
@@ -371,7 +443,7 @@ export function WeaponForm({
           name="name"
           render={({ field: { value, onChange, onBlur } }) => (
             <View style={styles.fieldGroup}>
-              <Text style={styles.label}>Название</Text>
+              <Text style={styles.label}>Название *</Text>
               <TextInput
                 value={value}
                 onChangeText={onChange}
@@ -407,7 +479,7 @@ export function WeaponForm({
         />
 
         <View style={styles.fieldGroup}>
-          <Text style={styles.label}>Вид оружия</Text>
+          <Text style={styles.label}>Вид оружия *</Text>
           <View style={styles.chipsContainer}>
             {weaponKindOptions.map((kind) => (
               <Pressable
@@ -435,7 +507,7 @@ export function WeaponForm({
         </View>
 
         <View style={styles.fieldGroup}>
-          <Text style={styles.label}>Материал</Text>
+          <Text style={styles.label}>Материал *</Text>
           <View style={styles.chipsContainer}>
             {materialOptions.map((material) => (
               <Pressable
@@ -480,7 +552,7 @@ export function WeaponForm({
               <Text style={styles.label}>Количество</Text>
               <TextInput
                 value={hasCost ? String(value ?? '') : ''}
-                onChangeText={(text) => onChange(Number(text) || 0)}
+                onChangeText={(text) => handleNumericChange(text, onChange)}
                 editable={hasCost}
                 keyboardType="numeric"
                 style={[styles.input, !hasCost && styles.inputDisabled]}
@@ -514,10 +586,10 @@ export function WeaponForm({
           name="damage.dice.count"
           render={({ field: { value, onChange } }) => (
             <View style={styles.fieldGroup}>
-              <Text style={styles.label}>Количество кубов</Text>
+              <Text style={styles.label}>Количество кубов *</Text>
               <TextInput
                 value={String(value ?? '')}
-                onChangeText={(text) => onChange(Number(text) || 0)}
+                onChangeText={(text) => handleNumericChange(text, onChange)}
                 keyboardType="numeric"
                 style={styles.input}
               />
@@ -533,7 +605,7 @@ export function WeaponForm({
           name="damage.dice.dice_type"
           render={({ field: { value, onChange } }) => (
             <SelectField
-              label="Тип куба"
+              label="Тип куба *"
               value={value}
               onChange={onChange}
               options={diceTypeOptions}
@@ -547,7 +619,7 @@ export function WeaponForm({
           name="damage.damage_type"
           render={({ field: { value, onChange } }) => (
             <SelectField
-              label="Тип урона"
+              label="Тип урона *"
               value={value}
               onChange={onChange}
               options={damageTypeOptions}
@@ -564,7 +636,7 @@ export function WeaponForm({
               <Text style={styles.label}>Бонусный урон</Text>
               <TextInput
                 value={String(value ?? '')}
-                onChangeText={(text) => onChange(Number(text) || 0)}
+                onChangeText={(text) => handleNumericChange(text, onChange)}
                 keyboardType="numeric"
                 style={styles.input}
               />
@@ -593,7 +665,7 @@ export function WeaponForm({
               <Text style={styles.label}>Вес</Text>
               <TextInput
                 value={hasWeight ? String(value ?? '') : ''}
-                onChangeText={(text) => onChange(Number(text) || 0)}
+                onChangeText={(text) => handleNumericChange(text, onChange)}
                 editable={hasWeight}
                 keyboardType="numeric"
                 style={[styles.input, !hasWeight && styles.inputDisabled]}
@@ -625,6 +697,7 @@ export function WeaponForm({
           <View style={styles.chipsContainer}>
             {weaponPropertyOptions.map((property) => {
               const isSelected = selectedProperties.includes(property.weapon_property_id);
+              const propertyLabel = weaponPropertyNameMap.get(property.name) ?? property.name;
               return (
                 <Pressable
                   key={property.weapon_property_id}
@@ -632,8 +705,13 @@ export function WeaponForm({
                   onPress={() => handleToggleProperty(property.weapon_property_id)}
                 >
                   <Text style={[styles.chipText, isSelected && styles.chipTextSelected]}>
-                    {property.name}
+                    {propertyLabel}
                   </Text>
+                  {propertyLabel !== property.name ? (
+                    <Text style={[styles.chipSubText, isSelected && styles.chipTextSelected]}>
+                      {property.name}
+                    </Text>
+                  ) : null}
                 </Pressable>
               );
             })}
@@ -706,6 +784,10 @@ const styles = StyleSheet.create({
   chipText: {
     color: colors.textPrimary,
     fontSize: 12,
+  },
+  chipSubText: {
+    color: colors.textSecondary,
+    fontSize: 11,
   },
   chipTextSelected: {
     color: colors.buttonPrimaryText,
