@@ -12,6 +12,8 @@ import { Link, type Href } from 'expo-router';
 
 import { getMaterialComponents } from '@/features/material-components/api/getMaterialComponents';
 import type { MaterialComponent } from '@/features/material-components/api/types';
+import { getMaterials } from '@/features/materials/api/getMaterials';
+import type { Material } from '@/features/materials/api/types';
 import { colors } from '@/shared/theme/colors';
 import { ScreenContainer } from '@/shared/ui/ScreenContainer';
 import { BodyText, SubtitleText, TitleText } from '@/shared/ui/Typography';
@@ -19,10 +21,6 @@ import { BodyText, SubtitleText, TitleText } from '@/shared/ui/Typography';
 function formatCost(cost: MaterialComponent['cost']) {
   if (!cost) return 'Стоимость: —';
   return `Стоимость: ${cost.count} ${cost.piece_type}`;
-}
-
-function formatMaterial(materialId: MaterialComponent['material_id']) {
-  return materialId ? `Материал: ${materialId}` : 'Материал: —';
 }
 
 export function MaterialComponentsList() {
@@ -34,14 +32,40 @@ export function MaterialComponentsList() {
     queryFn: getMaterialComponents,
   });
 
+  const {
+    data: materials,
+    isError: isMaterialsError,
+    error: materialsError,
+    refetch: refetchMaterials,
+    isLoading: isLoadingMaterials,
+  } = useQuery<Material[], Error>({
+    queryKey: ['materials'],
+    queryFn: getMaterials,
+  });
+
   const materialComponents = data ?? [];
+  const materialsMap = React.useMemo(() => {
+    if (!materials) return {};
+    return materials.reduce<Record<string, string>>((acc, material) => {
+      acc[material.material_id] = material.name;
+      return acc;
+    }, {});
+  }, [materials]);
 
   const showList = !isLoading && !isError && materialComponents.length > 0;
   const showEmpty = !isLoading && !isError && materialComponents.length === 0;
 
   return (
     <ScreenContainer>
-      <TitleText>Материальные компоненты</TitleText>
+      <View style={styles.headerRow}>
+        <TitleText>Материальные компоненты</TitleText>
+
+        <Link href="/(tabs)/library/equipment/material-components/create" asChild>
+          <Pressable style={styles.createButton}>
+            <BodyText style={styles.createButtonText}>+ Создать</BodyText>
+          </Pressable>
+        </Link>
+      </View>
 
       {isLoading && (
         <View style={styles.centered}>
@@ -63,9 +87,25 @@ export function MaterialComponentsList() {
         </View>
       )}
 
+      {!isLoading && !isError && isMaterialsError ? (
+        <View style={styles.warningBlock}>
+          <BodyText style={styles.warningTitle}>
+            Не удалось загрузить справочник материалов. Отображаю идентификаторы.
+          </BodyText>
+          <Pressable style={styles.retryButtonGhost} onPress={() => refetchMaterials()}>
+            <BodyText style={styles.retryButtonText}>Повторить</BodyText>
+          </Pressable>
+        </View>
+      ) : null}
+
       {showEmpty && (
         <View style={styles.centered}>
-          <BodyText style={styles.helperText}>Материальных компонент пока нет</BodyText>
+          <BodyText style={styles.helperText}>Материальных компонентов пока нет</BodyText>
+          <Link href="/(tabs)/library/equipment/material-components/create" asChild>
+            <Pressable style={styles.createButtonWide}>
+              <BodyText style={styles.createButtonText}>Создать первый компонент</BodyText>
+            </Pressable>
+          </Link>
         </View>
       )}
 
@@ -73,7 +113,14 @@ export function MaterialComponentsList() {
         <FlatList
           data={materialComponents}
           keyExtractor={(item) => item.material_component_id}
-          renderItem={({ item }) => <MaterialComponentListItem component={item} />}
+          renderItem={({ item }) => (
+            <MaterialComponentListItem
+              component={item}
+              materialName={item.material_id ? materialsMap[item.material_id] : null}
+              isLoadingMaterials={isLoadingMaterials}
+              materialsError={isMaterialsError ? materialsError : null}
+            />
+          )}
           contentContainerStyle={styles.listContainer}
           ItemSeparatorComponent={() => <View style={styles.separator} />}
           refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} />}
@@ -85,13 +132,37 @@ export function MaterialComponentsList() {
 
 type MaterialComponentListItemProps = {
   component: MaterialComponent;
+  materialName: string | null;
+  isLoadingMaterials: boolean;
+  materialsError: Error | null;
 };
 
-function MaterialComponentListItem({ component }: MaterialComponentListItemProps) {
+function MaterialComponentListItem({
+  component,
+  materialName,
+  isLoadingMaterials,
+  materialsError,
+}: MaterialComponentListItemProps) {
   const href = {
     pathname: '/(tabs)/library/equipment/material-components/[materialComponentId]',
     params: { materialComponentId: String(component.material_component_id) },
   } satisfies Href;
+
+  const materialDisplay = React.useMemo(() => {
+    if (isLoadingMaterials) {
+      return 'Материал: —';
+    }
+
+    if (component.material_id && materialName) {
+      return `Материал: ${materialName}`;
+    }
+
+    if (component.material_id && !materialName && materialsError) {
+      return `Материал: ${component.material_id}`;
+    }
+
+    return 'Материал: —';
+  }, [component.material_id, isLoadingMaterials, materialName, materialsError]);
 
   return (
     <Link href={href} asChild>
@@ -103,8 +174,12 @@ function MaterialComponentListItem({ component }: MaterialComponentListItemProps
           </SubtitleText>
         </View>
 
-        <BodyText style={styles.meta}>{formatMaterial(component.material_id)}</BodyText>
+        <BodyText style={styles.meta}>{materialDisplay}</BodyText>
         <BodyText style={styles.meta}>{formatCost(component.cost)}</BodyText>
+
+        {!isLoadingMaterials && materialsError ? (
+          <BodyText style={styles.warningText}>Справочник материалов не загрузился</BodyText>
+        ) : null}
 
         {component.description ? (
           <BodyText style={styles.description} numberOfLines={2}>
@@ -117,6 +192,33 @@ function MaterialComponentListItem({ component }: MaterialComponentListItemProps
 }
 
 const styles = StyleSheet.create({
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  createButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    backgroundColor: colors.buttonSecondary,
+    borderWidth: 1,
+    borderColor: colors.borderMuted,
+  },
+  createButtonWide: {
+    marginTop: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    backgroundColor: colors.buttonSecondary,
+    borderWidth: 1,
+    borderColor: colors.borderMuted,
+  },
+  createButtonText: {
+    color: colors.buttonSecondaryText,
+    fontWeight: '600',
+  },
   centered: {
     marginTop: 32,
     alignItems: 'center',
@@ -150,6 +252,14 @@ const styles = StyleSheet.create({
   retryButtonText: {
     color: colors.buttonSecondaryText,
     fontWeight: '500',
+  },
+  retryButtonGhost: {
+    marginTop: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.borderMuted,
   },
   listContainer: {
     paddingBottom: 24,
@@ -190,9 +300,25 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     marginBottom: 4,
   },
+  warningText: {
+    color: colors.warning,
+    fontSize: 12,
+  },
   description: {
     fontSize: 14,
     color: colors.textPrimary,
     marginTop: 8,
+  },
+  warningBlock: {
+    marginTop: 12,
+    padding: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: colors.warning,
+    backgroundColor: colors.surface,
+    rowGap: 8,
+  },
+  warningTitle: {
+    color: colors.warning,
   },
 });
