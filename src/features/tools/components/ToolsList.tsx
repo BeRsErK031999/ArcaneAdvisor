@@ -11,6 +11,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Link, type Href } from 'expo-router';
 
 import { getTools } from '@/features/tools/api/getTools';
+import { getToolTypes, type ToolTypeOption } from '@/features/tools/api/getToolTypes';
 import type { Tool } from '@/features/tools/api/types';
 import { colors } from '@/shared/theme/colors';
 import { ScreenContainer } from '@/shared/ui/ScreenContainer';
@@ -34,6 +35,16 @@ export function ToolsList() {
     queryKey: ['tools'],
     queryFn: getTools,
   });
+
+  const { data: toolTypes } = useQuery<ToolTypeOption[]>({
+    queryKey: ['tool-types'],
+    queryFn: getToolTypes,
+  });
+
+  const toolTypeLabels = React.useMemo(() => {
+    if (!toolTypes) return new Map<string, string>();
+    return new Map(toolTypes.map((item) => [item.key, item.label]));
+  }, [toolTypes]);
 
   const tools = data ?? [];
   const showList = !isLoading && !isError && tools.length > 0;
@@ -89,7 +100,12 @@ export function ToolsList() {
         <FlatList
           data={tools}
           keyExtractor={(item) => item.tool_id}
-          renderItem={({ item }) => <ToolListItem tool={item} />}
+          renderItem={({ item }) => (
+            <ToolListItem
+              tool={item}
+              typeLabel={toolTypeLabels.get(item.tool_type) ?? item.tool_type}
+            />
+          )}
           contentContainerStyle={styles.listContainer}
           ItemSeparatorComponent={() => <View style={styles.separator} />}
           refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} />}
@@ -101,9 +117,10 @@ export function ToolsList() {
 
 type ToolListItemProps = {
   tool: Tool;
+  typeLabel: string;
 };
 
-function ToolListItem({ tool }: ToolListItemProps) {
+function ToolListItem({ tool, typeLabel }: ToolListItemProps) {
   const href = {
     pathname: '/(tabs)/library/equipment/tools/[toolId]',
     params: { toolId: String(tool.tool_id) },
@@ -114,7 +131,7 @@ function ToolListItem({ tool }: ToolListItemProps) {
       <Pressable style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}>
         <View style={styles.cardHeader}>
           <BodyText style={styles.name}>{tool.name}</BodyText>
-          <BodyText style={styles.type}>{tool.tool_type}</BodyText>
+          <BodyText style={styles.type}>{typeLabel}</BodyText>
         </View>
         <BodyText style={styles.meta}>{formatWeight(tool.weight)}</BodyText>
         <BodyText style={styles.meta}>{formatCost(tool.cost)}</BodyText>
