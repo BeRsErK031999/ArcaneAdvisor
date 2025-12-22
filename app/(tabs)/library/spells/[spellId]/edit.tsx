@@ -13,8 +13,6 @@ import { getSources } from "@/features/sources/api/getSources";
 import type { Source } from "@/features/sources/api/types";
 import { getClasses } from "@/features/classes/api/getClasses";
 import type { Class } from "@/features/classes/api/types";
-import { getSubclasses } from "@/features/subclasses/api/getSubclasses";
-import type { Subclass } from "@/features/subclasses/api/types";
 import { getMaterialComponents } from "@/features/material-components/api/getMaterialComponents";
 import type { MaterialComponent } from "@/features/material-components/api/types";
 import { getModifiers } from "@/features/dictionaries/api/getModifiers";
@@ -58,7 +56,7 @@ export default function SpellEditScreen() {
       : undefined;
 
   const spellQuery = useQuery<Spell, Error>({
-    queryKey: ["spells", spellId ?? "unknown-spell"],
+    queryKey: ["spells", spellId],
     queryFn: () => getSpellById(spellId as string),
     enabled: Boolean(spellId),
   });
@@ -71,11 +69,6 @@ export default function SpellEditScreen() {
   const classesQuery = useQuery<Class[], Error>({
     queryKey: ["classes"],
     queryFn: getClasses,
-  });
-
-  const subclassesQuery = useQuery<Subclass[], Error>({
-    queryKey: ["subclasses"],
-    queryFn: getSubclasses,
   });
 
   const materialComponentsQuery = useQuery<MaterialComponent[], Error>({
@@ -105,7 +98,6 @@ export default function SpellEditScreen() {
     spellQuery.isLoading ||
     sourcesQuery.isLoading ||
     classesQuery.isLoading ||
-    subclassesQuery.isLoading ||
     materialComponentsQuery.isLoading ||
     modifiersQuery.isLoading ||
     damageTypesQuery.isLoading;
@@ -123,7 +115,6 @@ export default function SpellEditScreen() {
     spellQuery.isError ||
     sourcesQuery.isError ||
     classesQuery.isError ||
-    subclassesQuery.isError ||
     materialComponentsQuery.isError ||
     modifiersQuery.isError ||
     damageTypesQuery.isError;
@@ -134,7 +125,6 @@ export default function SpellEditScreen() {
       spellQuery.error?.message ||
       sourcesQuery.error?.message ||
       classesQuery.error?.message ||
-      subclassesQuery.error?.message ||
       materialComponentsQuery.error?.message ||
       modifiersQuery.error?.message ||
       damageTypesQuery.error?.message;
@@ -143,7 +133,6 @@ export default function SpellEditScreen() {
       spellQuery.refetch();
       sourcesQuery.refetch();
       classesQuery.refetch();
-      subclassesQuery.refetch();
       materialComponentsQuery.refetch();
       modifiersQuery.refetch();
       damageTypesQuery.refetch();
@@ -185,7 +174,6 @@ export default function SpellEditScreen() {
       initialValues={initialValues}
       sources={sourcesQuery.data}
       classes={classesQuery.data}
-      subclasses={subclassesQuery.data}
       materialComponents={materialComponentsQuery.data}
       modifiers={modifiersQuery.data}
       damageTypes={damageTypesQuery.data}

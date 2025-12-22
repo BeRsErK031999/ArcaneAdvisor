@@ -10,8 +10,6 @@ import { getSources } from "@/features/sources/api/getSources";
 import type { Source } from "@/features/sources/api/types";
 import { getClasses } from "@/features/classes/api/getClasses";
 import type { Class } from "@/features/classes/api/types";
-import { getSubclasses } from "@/features/subclasses/api/getSubclasses";
-import type { Subclass } from "@/features/subclasses/api/types";
 import { getMaterialComponents } from "@/features/material-components/api/getMaterialComponents";
 import type { MaterialComponent } from "@/features/material-components/api/types";
 import { getModifiers } from "@/features/dictionaries/api/getModifiers";
@@ -34,11 +32,6 @@ export default function SpellCreateScreen() {
     queryFn: getClasses,
   });
 
-  const subclassesQuery = useQuery<Subclass[], Error>({
-    queryKey: ["subclasses"],
-    queryFn: getSubclasses,
-  });
-
   const materialComponentsQuery = useQuery<MaterialComponent[], Error>({
     queryKey: ["material-components"],
     queryFn: getMaterialComponents,
@@ -57,7 +50,6 @@ export default function SpellCreateScreen() {
   const isLoadingAll =
     sourcesQuery.isLoading ||
     classesQuery.isLoading ||
-    subclassesQuery.isLoading ||
     materialComponentsQuery.isLoading ||
     modifiersQuery.isLoading ||
     damageTypesQuery.isLoading;
@@ -74,7 +66,6 @@ export default function SpellCreateScreen() {
   const hasError =
     sourcesQuery.isError ||
     classesQuery.isError ||
-    subclassesQuery.isError ||
     materialComponentsQuery.isError ||
     modifiersQuery.isError ||
     damageTypesQuery.isError;
@@ -83,14 +74,12 @@ export default function SpellCreateScreen() {
     const combinedErrorMessage =
       sourcesQuery.error?.message ||
       classesQuery.error?.message ||
-      subclassesQuery.error?.message ||
       materialComponentsQuery.error?.message ||
       modifiersQuery.error?.message ||
       damageTypesQuery.error?.message;
     const handleRetry = () => {
       sourcesQuery.refetch();
       classesQuery.refetch();
-      subclassesQuery.refetch();
       materialComponentsQuery.refetch();
       modifiersQuery.refetch();
       damageTypesQuery.refetch();
@@ -127,7 +116,6 @@ export default function SpellCreateScreen() {
       mode="create"
       sources={sourcesQuery.data}
       classes={classesQuery.data}
-      subclasses={subclassesQuery.data}
       materialComponents={materialComponentsQuery.data}
       modifiers={modifiersQuery.data}
       damageTypes={damageTypesQuery.data}
