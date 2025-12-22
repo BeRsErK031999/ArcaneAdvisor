@@ -5,8 +5,18 @@ import { useQuery } from "@tanstack/react-query";
 
 import { SpellForm } from "@/features/spells/components/SpellForm";
 import { NoSourcesForSpells } from "@/features/spells/components/NoSourcesForSpells";
+import { NoClassesForSpells } from "@/features/spells/components/NoClassesForSpells";
 import { getSources } from "@/features/sources/api/getSources";
 import type { Source } from "@/features/sources/api/types";
+import { getClasses } from "@/features/classes/api/getClasses";
+import type { Class } from "@/features/classes/api/types";
+import { getSubclasses } from "@/features/subclasses/api/getSubclasses";
+import type { Subclass } from "@/features/subclasses/api/types";
+import { getMaterialComponents } from "@/features/material-components/api/getMaterialComponents";
+import type { MaterialComponent } from "@/features/material-components/api/types";
+import { getModifiers } from "@/features/dictionaries/api/getModifiers";
+import { getDamageTypes } from "@/features/dictionaries/api/getDamageTypes";
+import type { DamageTypesResponse, Modifiers } from "@/features/dictionaries/api/types";
 import { ScreenContainer } from "@/shared/ui/ScreenContainer";
 import { BodyText } from "@/shared/ui/Typography";
 import { colors } from "@/shared/theme/colors";
@@ -14,18 +24,43 @@ import { colors } from "@/shared/theme/colors";
 export default function SpellCreateScreen() {
   const router = useRouter();
 
-  const {
-    data: sources,
-    isLoading: isLoadingSources,
-    isError: isErrorSources,
-    error: errorSources,
-    refetch: refetchSources,
-  } = useQuery<Source[], Error>({
+  const sourcesQuery = useQuery<Source[], Error>({
     queryKey: ["sources"],
     queryFn: getSources,
   });
 
-  const isLoadingAll = isLoadingSources;
+  const classesQuery = useQuery<Class[], Error>({
+    queryKey: ["classes"],
+    queryFn: getClasses,
+  });
+
+  const subclassesQuery = useQuery<Subclass[], Error>({
+    queryKey: ["subclasses"],
+    queryFn: getSubclasses,
+  });
+
+  const materialComponentsQuery = useQuery<MaterialComponent[], Error>({
+    queryKey: ["material-components"],
+    queryFn: getMaterialComponents,
+  });
+
+  const modifiersQuery = useQuery<Modifiers, Error>({
+    queryKey: ["modifiers"],
+    queryFn: getModifiers,
+  });
+
+  const damageTypesQuery = useQuery<DamageTypesResponse, Error>({
+    queryKey: ["damage-types"],
+    queryFn: getDamageTypes,
+  });
+
+  const isLoadingAll =
+    sourcesQuery.isLoading ||
+    classesQuery.isLoading ||
+    subclassesQuery.isLoading ||
+    materialComponentsQuery.isLoading ||
+    modifiersQuery.isLoading ||
+    damageTypesQuery.isLoading;
 
   if (isLoadingAll) {
     return (
@@ -36,10 +71,29 @@ export default function SpellCreateScreen() {
     );
   }
 
-  if (isErrorSources) {
-    const combinedErrorMessage = errorSources?.message;
+  const hasError =
+    sourcesQuery.isError ||
+    classesQuery.isError ||
+    subclassesQuery.isError ||
+    materialComponentsQuery.isError ||
+    modifiersQuery.isError ||
+    damageTypesQuery.isError;
+
+  if (hasError) {
+    const combinedErrorMessage =
+      sourcesQuery.error?.message ||
+      classesQuery.error?.message ||
+      subclassesQuery.error?.message ||
+      materialComponentsQuery.error?.message ||
+      modifiersQuery.error?.message ||
+      damageTypesQuery.error?.message;
     const handleRetry = () => {
-      refetchSources();
+      sourcesQuery.refetch();
+      classesQuery.refetch();
+      subclassesQuery.refetch();
+      materialComponentsQuery.refetch();
+      modifiersQuery.refetch();
+      damageTypesQuery.refetch();
     };
 
     return (
@@ -57,20 +111,33 @@ export default function SpellCreateScreen() {
     );
   }
 
-  const hasSources = (sources ?? []).length > 0;
+  const hasSources = (sourcesQuery.data ?? []).length > 0;
+  const hasClasses = (classesQuery.data ?? []).length > 0;
 
   if (!hasSources) {
     return <NoSourcesForSpells />;
   }
 
+  if (!hasClasses) {
+    return <NoClassesForSpells />;
+  }
+
   return (
     <SpellForm
       mode="create"
-      sources={sources}
+      sources={sourcesQuery.data}
+      classes={classesQuery.data}
+      subclasses={subclassesQuery.data}
+      materialComponents={materialComponentsQuery.data}
+      modifiers={modifiersQuery.data}
+      damageTypes={damageTypesQuery.data}
       submitLabel="Создать заклинание"
       showBackButton
-      onSuccess={() => {
-        router.replace("/(tabs)/library/spells");
+      onSuccess={(spellId) => {
+        router.replace({
+          pathname: "/(tabs)/library/spells/[spellId]",
+          params: { spellId },
+        });
       }}
     />
   );

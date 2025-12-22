@@ -1,8 +1,9 @@
 // src/features/spells/components/SpellDetails.tsx
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
 import React from "react";
 import {
+  Alert,
   ActivityIndicator,
   Pressable,
   ScrollView,
@@ -11,6 +12,7 @@ import {
 } from "react-native";
 
 import { getSpellById } from "@/features/spells/api/getSpellById";
+import { deleteSpell } from "@/features/spells/api/deleteSpell";
 import type { Spell } from "@/features/spells/api/types";
 import { colors } from "@/shared/theme/colors";
 import { ScreenContainer } from "@/shared/ui/ScreenContainer";
@@ -23,6 +25,7 @@ interface SpellDetailsProps {
 
 export function SpellDetails({ spellId }: SpellDetailsProps) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const {
     data: spell,
     isLoading,
@@ -32,6 +35,15 @@ export function SpellDetails({ spellId }: SpellDetailsProps) {
   } = useQuery<Spell, Error>({
     queryKey: ["spells", spellId],
     queryFn: () => getSpellById(spellId),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: () => deleteSpell(spellId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["spells"] });
+      queryClient.removeQueries({ queryKey: ["spells", spellId] });
+      router.back();
+    },
   });
 
   // Состояние загрузки
@@ -122,18 +134,49 @@ export function SpellDetails({ spellId }: SpellDetailsProps) {
           Уровень {spell.level}, школа: {spell.school}
         </BodyText>
 
-        {/* Кнопка "Редактировать" */}
-        <Pressable
-          onPress={() =>
-            router.push({
-              pathname: "/(tabs)/library/spells/[spellId]/edit",
-              params: { spellId: spell.spell_id },
-            })
-          }
-          style={styles.editButton}
-        >
-          <BodyText style={styles.editButtonText}>Редактировать</BodyText>
-        </Pressable>
+        {/* Действия */}
+        <View style={styles.actionsRow}>
+          <Pressable
+            onPress={() =>
+              router.push({
+                pathname: "/(tabs)/library/spells/[spellId]/edit",
+                params: { spellId: spell.spell_id },
+              })
+            }
+            style={styles.editButton}
+            disabled={deleteMutation.isPending}
+          >
+            <BodyText style={styles.editButtonText}>Редактировать</BodyText>
+          </Pressable>
+
+          <Pressable
+            onPress={() =>
+              Alert.alert(
+                "Удалить заклинание?",
+                "Действие нельзя отменить.",
+                [
+                  { text: "Отмена", style: "cancel" },
+                  {
+                    text: "Удалить",
+                    style: "destructive",
+                    onPress: () => deleteMutation.mutate(),
+                  },
+                ],
+              )
+            }
+            style={[styles.deleteButton, deleteMutation.isPending && styles.deleteButtonDisabled]}
+            disabled={deleteMutation.isPending}
+          >
+            <BodyText style={styles.deleteButtonText}>
+              {deleteMutation.isPending ? "Удаляю…" : "Удалить"}
+            </BodyText>
+          </Pressable>
+        </View>
+        {deleteMutation.isError ? (
+          <BodyText style={styles.errorText}>
+            Не удалось удалить заклинание. Попробуйте ещё раз.
+          </BodyText>
+        ) : null}
 
         {/* Основные параметры каста */}
         <View style={styles.block}>
@@ -274,6 +317,11 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
 
+  actionsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    columnGap: 8,
+  },
   editButton: {
     alignSelf: "flex-start",
     paddingVertical: 6,
@@ -284,6 +332,20 @@ const styles = StyleSheet.create({
   editButtonText: {
     color: colors.buttonPrimaryText,
     fontWeight: "500",
+  },
+  deleteButton: {
+    alignSelf: "flex-start",
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 6,
+    backgroundColor: colors.error,
+  },
+  deleteButtonDisabled: {
+    opacity: 0.6,
+  },
+  deleteButtonText: {
+    color: colors.buttonPrimaryText,
+    fontWeight: "600",
   },
 
   block: {
