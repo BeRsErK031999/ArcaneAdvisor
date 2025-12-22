@@ -127,6 +127,45 @@ export function SpellDetails({ spellId }: SpellDetailsProps) {
     return new Map(Object.entries(damageTypesQuery.data));
   }, [damageTypesQuery.data]);
 
+  const savingThrowsLabel = React.useMemo(() => {
+    const savingThrows = spell?.saving_throws;
+    if (!savingThrows || savingThrows.length === 0) {
+      return "—";
+    }
+
+    return savingThrows.map((save) => modifiersMap.get(save) ?? save).join(", ");
+  }, [modifiersMap, spell?.saving_throws]);
+
+  const damageTypeLabel = React.useMemo(() => {
+    const damageTypeName = spell?.damage_type?.name;
+    if (!damageTypeName) {
+      return null;
+    }
+
+    return damageTypesMap.get(damageTypeName) ?? damageTypeName;
+  }, [damageTypesMap, spell?.damage_type?.name]);
+
+  const classNames = React.useMemo(
+    () =>
+      (spell?.class_ids ?? []).map(
+        (classId) => classNameMap.get(classId) ?? "Название класса недоступно",
+      ),
+    [classNameMap, spell?.class_ids],
+  );
+
+  const subclassNames = React.useMemo(
+    () =>
+      (spell?.subclass_ids ?? []).map(
+        (subclassId) => subclassNameMap.get(subclassId) ?? "Название подкласса недоступно",
+      ),
+    [spell?.subclass_ids, subclassNameMap],
+  );
+
+  const isLoadingSubclasses = subclassQueries.some(
+    (query) => query.isLoading || query.isFetching,
+  );
+  const hasSubclassError = subclassQueries.some((query) => query.isError);
+
   const deleteMutation = useMutation({
     mutationFn: () => deleteSpell(spellId),
     onSuccess: () => {
@@ -211,47 +250,6 @@ export function SpellDetails({ spellId }: SpellDetailsProps) {
     const { count, unit } = spell.splash.splash;
     return `${count} ${unit}`;
   };
-
-  const savingThrowsLabel = React.useMemo(() => {
-    if (!spell.saving_throws || spell.saving_throws.length === 0) {
-      return "—";
-    }
-
-    return spell.saving_throws
-      .map((save) => modifiersMap.get(save) ?? save)
-      .join(", ");
-  }, [modifiersMap, spell.saving_throws]);
-
-  const damageTypeLabel = React.useMemo(() => {
-    const damageTypeName = spell.damage_type?.name;
-    if (!damageTypeName) {
-      return null;
-    }
-
-    return damageTypesMap.get(damageTypeName) ?? damageTypeName;
-  }, [damageTypesMap, spell.damage_type?.name]);
-
-  const classNames = React.useMemo(
-    () =>
-      (spell.class_ids ?? []).map(
-        (classId) => classNameMap.get(classId) ?? "Название класса недоступно",
-      ),
-    [classNameMap, spell.class_ids],
-  );
-
-  const subclassNames = React.useMemo(
-    () =>
-      (spell.subclass_ids ?? []).map(
-        (subclassId) =>
-          subclassNameMap.get(subclassId) ?? "Название подкласса недоступно",
-      ),
-    [spell.subclass_ids, subclassNameMap],
-  );
-
-  const isLoadingSubclasses = subclassQueries.some(
-    (query) => query.isLoading || query.isFetching,
-  );
-  const hasSubclassError = subclassQueries.some((query) => query.isError);
 
   return (
     <ScreenContainer>

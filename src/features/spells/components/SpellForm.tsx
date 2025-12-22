@@ -278,7 +278,7 @@ export const SpellForm: React.FC<SpellFormProps> = ({
 
   const extractSubmitError = (error: unknown, currentMode: SpellFormMode) => {
     if (isAxiosError(error)) {
-      const data = error.response?.data as { extra?: Array<{ message?: string }> } | undefined;
+      const data = error.response?.data as { extra?: { message?: string }[] } | undefined;
       const extraMessage = data?.extra?.find((item) => item.message)?.message;
       if (extraMessage) {
         const normalized = extraMessage.toString().toLowerCase();
