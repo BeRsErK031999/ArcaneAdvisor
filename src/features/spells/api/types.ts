@@ -85,12 +85,12 @@ const SpellDurationSchema = z.object({
   game_time: GameTimeSchema.nullable(),
 });
 
-export const SpellCreateSchema = z.object({
-  class_ids: z.array(z.string().uuid()),
+const BaseSpellSchema = z.object({
+  class_ids: z.array(z.string().uuid()).min(1, "Выберите хотя бы один класс"),
   subclass_ids: z.array(z.string().uuid()),
   name: z.string().min(1),
   description: z.string().min(1),
-  next_level_description: z.string().default(''),
+  next_level_description: z.string().default(""),
   level: z.number().int().min(0),
   school: z.string().min(1, "Укажите школу заклинания"),
   damage_type: SpellDamageTypeSchema,
@@ -106,7 +106,91 @@ export const SpellCreateSchema = z.object({
   source_id: z.string().uuid(),
 });
 
+const validateSpellShape = (
+  value: z.infer<typeof BaseSpellSchema>,
+  ctx: z.RefinementCtx,
+) => {
+  if (!value.components.material && value.components.materials.length > 0) {
+    ctx.addIssue({
+      path: ["components", "materials"],
+      code: z.ZodIssueCode.custom,
+      message: "Материальные компоненты недоступны, пока флаг не включён",
+    });
+  }
+
+  if (value.components.material && value.components.materials.length === 0) {
+    ctx.addIssue({
+      path: ["components", "materials"],
+      code: z.ZodIssueCode.custom,
+      message: "Выберите материальные компоненты",
+    });
+  }
+
+  if (
+    value.duration.game_time &&
+    (value.duration.game_time.count === undefined || value.duration.game_time.count < 1)
+  ) {
+    ctx.addIssue({
+      path: ["duration", "game_time", "count"],
+      code: z.ZodIssueCode.custom,
+      message: "Введите длительность не менее 1",
+    });
+  }
+
+  if (
+    value.splash.splash &&
+    (value.splash.splash.count === undefined || value.splash.splash.count < 1)
+  ) {
+    ctx.addIssue({
+      path: ["splash", "splash", "count"],
+      code: z.ZodIssueCode.custom,
+      message: "Введите область действия не менее 1",
+    });
+  }
+};
+
+export const SpellCreateSchema = BaseSpellSchema.superRefine(validateSpellShape);
 export type SpellCreateInput = z.infer<typeof SpellCreateSchema>;
 
-export const SpellUpdateSchema = SpellCreateSchema.deepPartial();
+export const SpellUpdateSchema = BaseSpellSchema.partial().superRefine((value, ctx) => {
+  if (value.components) {
+    if (value.components.material === false && (value.components.materials?.length ?? 0) > 0) {
+      ctx.addIssue({
+        path: ["components", "materials"],
+        code: z.ZodIssueCode.custom,
+        message: "Материальные компоненты недоступны, пока флаг не включён",
+      });
+    }
+
+    if (value.components.material === true && (value.components.materials?.length ?? 0) === 0) {
+      ctx.addIssue({
+        path: ["components", "materials"],
+        code: z.ZodIssueCode.custom,
+        message: "Выберите материальные компоненты",
+      });
+    }
+  }
+
+  if (
+    value.duration?.game_time &&
+    (value.duration.game_time.count === undefined || value.duration.game_time.count < 1)
+  ) {
+    ctx.addIssue({
+      path: ["duration", "game_time", "count"],
+      code: z.ZodIssueCode.custom,
+      message: "Введите длительность не менее 1",
+    });
+  }
+
+  if (
+    value.splash?.splash &&
+    (value.splash.splash.count === undefined || value.splash.splash.count < 1)
+  ) {
+    ctx.addIssue({
+      path: ["splash", "splash", "count"],
+      code: z.ZodIssueCode.custom,
+      message: "Введите область действия не менее 1",
+    });
+  }
+});
 export type SpellUpdateInput = z.infer<typeof SpellUpdateSchema>;
