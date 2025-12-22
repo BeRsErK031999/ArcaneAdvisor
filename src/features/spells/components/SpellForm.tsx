@@ -264,10 +264,7 @@ export const SpellForm: React.FC<SpellFormProps> = ({
     },
   });
 
-  const handleNumericChange = (
-    text: string,
-    onChange: (value: number | undefined) => void,
-  ) => {
+  const handleNumericChange = (text: string, onChange: (value: number) => void) => {
     const trimmed = text.trim();
     if (trimmed === "") {
       return;
@@ -438,11 +435,7 @@ export const SpellForm: React.FC<SpellFormProps> = ({
                 render={({ field: { value, onChange, onBlur } }) => (
                   <TextInput
                     value={typeof value === "number" && Number.isFinite(value) ? value.toString() : ""}
-                    onChangeText={(text) =>
-                      handleNumericChange(text, (numeric) =>
-                        onChange((numeric ?? undefined) as unknown as number),
-                      )
-                    }
+                    onChangeText={(text) => handleNumericChange(text, onChange)}
                     onBlur={onBlur}
                     keyboardType="numeric"
                     inputMode="numeric"
@@ -556,26 +549,22 @@ export const SpellForm: React.FC<SpellFormProps> = ({
           <Text style={styles.label}>Время накладывания *</Text>
           <View style={styles.row}>
             <View style={styles.column}>
-              <Controller
-                control={control}
-                name="casting_time.count"
-                render={({ field: { value, onChange, onBlur } }) => (
-                  <TextInput
-                    value={typeof value === "number" && Number.isFinite(value) ? value.toString() : ""}
-                    onChangeText={(text) =>
-                      handleNumericChange(text, (numeric) =>
-                        onChange((numeric ?? undefined) as unknown as number),
-                      )
-                    }
-                    onBlur={onBlur}
-                    keyboardType="numeric"
-                    inputMode="numeric"
-                    placeholder="1"
-                    style={styles.input}
-                    placeholderTextColor={colors.inputPlaceholder}
+                  <Controller
+                    control={control}
+                    name="casting_time.count"
+                    render={({ field: { value, onChange, onBlur } }) => (
+                      <TextInput
+                        value={typeof value === "number" && Number.isFinite(value) ? value.toString() : ""}
+                        onChangeText={(text) => handleNumericChange(text, onChange)}
+                        onBlur={onBlur}
+                        keyboardType="numeric"
+                        inputMode="numeric"
+                        placeholder="1"
+                        style={styles.input}
+                        placeholderTextColor={colors.inputPlaceholder}
+                      />
+                    )}
                   />
-                )}
-              />
               <FormErrorText>
                 {errors.casting_time?.count?.message}
               </FormErrorText>
@@ -605,26 +594,22 @@ export const SpellForm: React.FC<SpellFormProps> = ({
           <Text style={styles.label}>Дистанция *</Text>
           <View style={styles.row}>
             <View style={styles.column}>
-              <Controller
-                control={control}
-                name="spell_range.count"
-                render={({ field: { value, onChange, onBlur } }) => (
-                  <TextInput
-                    value={typeof value === "number" && Number.isFinite(value) ? value.toString() : ""}
-                    onChangeText={(text) =>
-                      handleNumericChange(text, (numeric) =>
-                        onChange((numeric ?? undefined) as unknown as number),
-                      )
-                    }
-                    onBlur={onBlur}
-                    keyboardType="numeric"
-                    inputMode="numeric"
-                    placeholder="60"
-                    style={styles.input}
-                    placeholderTextColor={colors.inputPlaceholder}
+                  <Controller
+                    control={control}
+                    name="spell_range.count"
+                    render={({ field: { value, onChange, onBlur } }) => (
+                      <TextInput
+                        value={typeof value === "number" && Number.isFinite(value) ? value.toString() : ""}
+                        onChangeText={(text) => handleNumericChange(text, onChange)}
+                        onBlur={onBlur}
+                        keyboardType="numeric"
+                        inputMode="numeric"
+                        placeholder="60"
+                        style={styles.input}
+                        placeholderTextColor={colors.inputPlaceholder}
+                      />
+                    )}
                   />
-                )}
-              />
               <FormErrorText>
                 {errors.spell_range?.count?.message}
               </FormErrorText>
@@ -740,11 +725,7 @@ export const SpellForm: React.FC<SpellFormProps> = ({
                     render={({ field: { value, onChange, onBlur } }) => (
                       <TextInput
                         value={typeof value === "number" && Number.isFinite(value) ? value.toString() : ""}
-                        onChangeText={(text) =>
-                          handleNumericChange(text, (numeric) =>
-                            onChange((numeric ?? undefined) as unknown as number),
-                          )
-                        }
+                        onChangeText={(text) => handleNumericChange(text, onChange)}
                         onBlur={onBlur}
                         keyboardType="numeric"
                         inputMode="numeric"
@@ -812,11 +793,7 @@ export const SpellForm: React.FC<SpellFormProps> = ({
                     render={({ field: { value, onChange, onBlur } }) => (
                       <TextInput
                         value={typeof value === "number" && Number.isFinite(value) ? value.toString() : ""}
-                        onChangeText={(text) =>
-                          handleNumericChange(text, (numeric) =>
-                            onChange((numeric ?? undefined) as unknown as number),
-                          )
-                        }
+                        onChangeText={(text) => handleNumericChange(text, onChange)}
                         onBlur={onBlur}
                         keyboardType="numeric"
                         inputMode="numeric"
