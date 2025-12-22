@@ -1,6 +1,6 @@
 // src/features/spells/components/SpellsList.tsx
 import { useQuery } from "@tanstack/react-query";
-import { Link, type Href } from "expo-router";
+import { useRouter } from "expo-router";
 import React from "react";
 import {
   ActivityIndicator,
@@ -18,6 +18,8 @@ import { ScreenContainer } from "@/shared/ui/ScreenContainer";
 import { BodyText, TitleText } from "@/shared/ui/Typography";
 
 export function SpellsList() {
+  const router = useRouter();
+
   const { data, isLoading, isError, error, refetch, isRefetching } = useQuery<
     Spell[],
     Error
@@ -31,20 +33,26 @@ export function SpellsList() {
   const showList = !isLoading && !isError && spells.length > 0;
   const showEmpty = !isLoading && !isError && spells.length === 0;
 
+  const handleCreate = () => {
+    router.push("/(tabs)/library/spells/create");
+  };
+
   return (
     <ScreenContainer>
-      {/* Шапка: заголовок + кнопка создания */}
       <View style={styles.headerRow}>
         <TitleText>Заклинания</TitleText>
 
-        <Link href="/(tabs)/library/spells/create" asChild>
-          <Pressable style={styles.createButton}>
-            <BodyText style={styles.createButtonText}>+ Создать</BodyText>
-          </Pressable>
-        </Link>
+        <Pressable
+          style={({ pressed }) => [
+            styles.createButton,
+            pressed && styles.buttonPressed,
+          ]}
+          onPress={handleCreate}
+        >
+          <BodyText style={styles.createButtonText}>+ Создать</BodyText>
+        </Pressable>
       </View>
 
-      {/* Состояние загрузки */}
       {isLoading && (
         <View style={styles.centered}>
           <ActivityIndicator color={colors.textSecondary} />
@@ -52,7 +60,6 @@ export function SpellsList() {
         </View>
       )}
 
-      {/* Состояние ошибки */}
       {isError && (
         <View style={styles.centered}>
           <BodyText style={[styles.helperText, styles.errorText]}>
@@ -62,28 +69,36 @@ export function SpellsList() {
             {error?.message ?? "Неизвестная ошибка"}
           </BodyText>
 
-          <Pressable style={styles.retryButton} onPress={() => refetch()}>
+          <Pressable
+            style={({ pressed }) => [
+              styles.retryButton,
+              pressed && styles.buttonPressed,
+            ]}
+            onPress={() => refetch()}
+          >
             <BodyText style={styles.retryButtonText}>Повторить</BodyText>
           </Pressable>
         </View>
       )}
 
-      {/* Пустой список */}
       {showEmpty && (
         <View style={styles.centered}>
           <BodyText style={styles.helperText}>Заклинаний пока нет</BodyText>
 
-          <Link href="/(tabs)/library/spells/create" asChild>
-            <Pressable style={styles.createButtonWide}>
-              <BodyText style={styles.createButtonText}>
-                + Создать первое заклинание
-              </BodyText>
-            </Pressable>
-          </Link>
+          <Pressable
+            style={({ pressed }) => [
+              styles.createButtonWide,
+              pressed && styles.buttonPressed,
+            ]}
+            onPress={handleCreate}
+          >
+            <BodyText style={styles.createButtonText}>
+              + Создать первое заклинание
+            </BodyText>
+          </Pressable>
         </View>
       )}
 
-      {/* Сам список */}
       {showList && (
         <FlatList
           data={spells}
@@ -105,30 +120,33 @@ type SpellListItemProps = {
 };
 
 function SpellListItem({ spell }: SpellListItemProps) {
-  const href = {
-    pathname: "/(tabs)/library/spells/[spellId]",
-    params: { spellId: String(spell.spell_id) },
-  } satisfies Href;
+  const router = useRouter();
+
+  const handleOpenDetails = () => {
+    router.push({
+      pathname: "/(tabs)/library/spells/[spellId]",
+      params: { spellId: String(spell.spell_id) },
+    });
+  };
 
   return (
-    <Link href={href} asChild>
-      <Pressable
-        style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
-      >
-        <View style={styles.cardHeader}>
-          <BodyText style={styles.name}>{spell.name}</BodyText>
-          <BodyText style={styles.level}>Уровень: {spell.level}</BodyText>
-        </View>
+    <Pressable
+      onPress={handleOpenDetails}
+      style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
+    >
+      <View style={styles.cardHeader}>
+        <BodyText style={styles.name}>{spell.name}</BodyText>
+        <BodyText style={styles.level}>Уровень: {spell.level}</BodyText>
+      </View>
 
-        <BodyText style={styles.school}>Школа: {spell.school}</BodyText>
+      <BodyText style={styles.school}>Школа: {spell.school}</BodyText>
 
-        {spell.description ? (
-          <BodyText style={styles.description} numberOfLines={2}>
-            {spell.description}
-          </BodyText>
-        ) : null}
-      </Pressable>
-    </Link>
+      {spell.description ? (
+        <BodyText style={styles.description} numberOfLines={2}>
+          {spell.description}
+        </BodyText>
+      ) : null}
+    </Pressable>
   );
 }
 
@@ -145,16 +163,19 @@ const styles = StyleSheet.create({
     alignItems: "center",
     rowGap: 12,
   },
+
   helperText: {
     marginTop: 8,
     fontSize: 14,
     color: colors.textSecondary,
     textAlign: "center",
   },
+
   errorText: {
     color: colors.error,
     fontWeight: "600",
   },
+
   errorDetails: {
     marginTop: 4,
     fontSize: 12,
@@ -162,24 +183,11 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
 
-  retryButton: {
-    marginTop: 16,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    backgroundColor: colors.buttonSecondary,
-    borderWidth: 1,
-    borderColor: colors.borderMuted,
-  },
-  retryButtonText: {
-    color: colors.buttonSecondaryText,
-    fontWeight: "500",
-  },
-
   listContainer: {
     paddingBottom: 24,
     rowGap: 12,
   },
+
   separator: {
     height: 12,
   },
@@ -191,15 +199,18 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.borderMuted,
   },
+
   cardPressed: {
-    backgroundColor: colors.surfaceElevated ?? colors.surface, // если surfaceElevated нет, можно убрать
+    backgroundColor: colors.surfaceElevated ?? colors.surface,
   },
+
   cardHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-start",
     marginBottom: 4,
   },
+
   name: {
     fontSize: 16,
     fontWeight: "600",
@@ -207,15 +218,18 @@ const styles = StyleSheet.create({
     marginRight: 8,
     color: colors.textPrimary,
   },
+
   level: {
     fontSize: 13,
     color: colors.textSecondary,
   },
+
   school: {
     fontSize: 13,
     color: colors.textSecondary,
     marginBottom: 6,
   },
+
   description: {
     fontSize: 13,
     color: colors.textMuted,
@@ -231,6 +245,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+
   createButtonWide: {
     marginTop: 12,
     paddingVertical: 10,
@@ -242,8 +257,28 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+
   createButtonText: {
     color: colors.buttonPrimaryText,
     fontWeight: "600",
+  },
+
+  retryButton: {
+    marginTop: 16,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    backgroundColor: colors.buttonSecondary,
+    borderWidth: 1,
+    borderColor: colors.borderMuted,
+  },
+
+  retryButtonText: {
+    color: colors.buttonSecondaryText,
+    fontWeight: "500",
+  },
+
+  buttonPressed: {
+    opacity: 0.85,
   },
 });

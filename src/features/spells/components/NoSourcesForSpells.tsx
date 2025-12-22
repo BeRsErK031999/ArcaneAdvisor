@@ -1,12 +1,15 @@
+// src/features/spells/components/NoSourcesForSpells.tsx
+import { useRouter } from "expo-router";
 import React from "react";
 import { Pressable, StyleSheet, View } from "react-native";
-import { Link } from "expo-router";
 
+import { colors } from "@/shared/theme/colors";
 import { ScreenContainer } from "@/shared/ui/ScreenContainer";
 import { BodyText, TitleText } from "@/shared/ui/Typography";
-import { colors } from "@/shared/theme/colors";
 
 export function NoSourcesForSpells() {
+  const router = useRouter();
+
   return (
     <ScreenContainer>
       <View style={styles.centered}>
@@ -22,13 +25,12 @@ export function NoSourcesForSpells() {
           заклинание. Без источника сервер не принимает новые заклинания.
         </BodyText>
 
-        <Link href="/(tabs)/library/sources" asChild>
-          <Pressable style={styles.button}>
-            <BodyText style={styles.buttonText}>
-              Перейти к источникам
-            </BodyText>
-          </Pressable>
-        </Link>
+        <Pressable
+          style={({ pressed }) => [styles.button, pressed && styles.buttonPressed]}
+          onPress={() => router.push("/(tabs)/library/sources")}
+        >
+          <BodyText style={styles.buttonText}>Перейти к источникам</BodyText>
+        </Pressable>
       </View>
     </ScreenContainer>
   );
@@ -61,6 +63,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.buttonPrimary,
     borderWidth: 1,
     borderColor: colors.buttonPrimary,
+  },
+  buttonPressed: {
+    opacity: 0.85,
   },
   buttonText: {
     color: colors.buttonPrimaryText,
