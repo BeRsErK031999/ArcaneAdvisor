@@ -1,5 +1,11 @@
 // src/features/spells/components/SpellDetails.tsx
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useMutation,
+  useQueries,
+  useQuery,
+  useQueryClient,
+  type UseQueryResult,
+} from "@tanstack/react-query";
 import { useRouter } from "expo-router";
 import React from "react";
 import {
@@ -14,6 +20,15 @@ import {
 import { getSpellById } from "@/features/spells/api/getSpellById";
 import { deleteSpell } from "@/features/spells/api/deleteSpell";
 import type { Spell } from "@/features/spells/api/types";
+import { getClasses } from "@/features/classes/api/getClasses";
+import type { Class } from "@/features/classes/api/types";
+import { getSubclasses } from "@/features/subclasses/api/getSubclasses";
+import type { Subclass } from "@/features/subclasses/api/types";
+import { getMaterialComponents } from "@/features/material-components/api/getMaterialComponents";
+import type { MaterialComponent } from "@/features/material-components/api/types";
+import { getModifiers } from "@/features/dictionaries/api/getModifiers";
+import { getDamageTypes } from "@/features/dictionaries/api/getDamageTypes";
+import type { DamageTypesResponse, Modifiers } from "@/features/dictionaries/api/types";
 import { colors } from "@/shared/theme/colors";
 import { ScreenContainer } from "@/shared/ui/ScreenContainer";
 import { BodyText, TitleText } from "@/shared/ui/Typography";
@@ -36,6 +51,81 @@ export function SpellDetails({ spellId }: SpellDetailsProps) {
     queryKey: ["spells", spellId],
     queryFn: () => getSpellById(spellId),
   });
+
+  const classesQuery = useQuery<Class[], Error>({
+    queryKey: ["classes"],
+    queryFn: getClasses,
+  });
+
+  const materialComponentsQuery = useQuery<MaterialComponent[], Error>({
+    queryKey: ["material-components"],
+    queryFn: getMaterialComponents,
+  });
+
+  const modifiersQuery = useQuery<Modifiers, Error>({
+    queryKey: ["modifiers"],
+    queryFn: getModifiers,
+  });
+
+  const damageTypesQuery = useQuery<DamageTypesResponse, Error>({
+    queryKey: ["damage-types"],
+    queryFn: getDamageTypes,
+  });
+
+  const subclassQueries = useQueries<UseQueryResult<Subclass[], Error>[]>({
+    queries: React.useMemo(
+      () =>
+        (spell?.class_ids ?? []).map((classId) => ({
+          queryKey: ["subclasses", classId],
+          queryFn: () => getSubclasses({ filter_by_class_id: classId }),
+          enabled: Boolean(classId),
+        })),
+      [spell?.class_ids],
+    ),
+  });
+
+  const classNameMap = React.useMemo(() => {
+    if (!classesQuery.data) {
+      return new Map<string, string>();
+    }
+    return new Map(classesQuery.data.map((classItem) => [classItem.class_id, classItem.name]));
+  }, [classesQuery.data]);
+
+  const subclassNameMap = React.useMemo(() => {
+    const map = new Map<string, string>();
+    subclassQueries.forEach((query) => {
+      query.data?.forEach((subclass) => {
+        map.set(subclass.subclass_id, subclass.name);
+      });
+    });
+    return map;
+  }, [subclassQueries]);
+
+  const materialComponentsMap = React.useMemo(() => {
+    if (!materialComponentsQuery.data) {
+      return new Map<string, string>();
+    }
+    return new Map(
+      materialComponentsQuery.data.map((component) => [
+        component.material_component_id,
+        component.name,
+      ]),
+    );
+  }, [materialComponentsQuery.data]);
+
+  const modifiersMap = React.useMemo(() => {
+    if (!modifiersQuery.data) {
+      return new Map<string, string>();
+    }
+    return new Map(Object.entries(modifiersQuery.data));
+  }, [modifiersQuery.data]);
+
+  const damageTypesMap = React.useMemo(() => {
+    if (!damageTypesQuery.data) {
+      return new Map<string, string>();
+    }
+    return new Map(Object.entries(damageTypesQuery.data));
+  }, [damageTypesQuery.data]);
 
   const deleteMutation = useMutation({
     mutationFn: () => deleteSpell(spellId),
@@ -87,12 +177,23 @@ export function SpellDetails({ spellId }: SpellDetailsProps) {
     const parts: string[] = [];
     if (spell.components.verbal) parts.push("V");
     if (spell.components.symbolic) parts.push("S");
-    if (spell.components.material) parts.push("M");
-    const base = parts.join(", ");
-    if (spell.components.material && spell.components.materials.length > 0) {
-      return `${base} (${spell.components.materials.join(", ")})`;
+
+    if (spell.components.material) {
+      parts.push("M");
+      if (spell.components.materials.length > 0) {
+        const materialNames = spell.components.materials
+          .map((materialId) => materialComponentsMap.get(materialId))
+          .filter(Boolean) as string[];
+
+        if (materialNames.length > 0) {
+          parts.push(`Материальные: ${materialNames.join(", ")}`);
+        } else {
+          parts.push("Материальные: названия недоступны");
+        }
+      }
     }
-    return base || "—";
+
+    return parts.length > 0 ? parts.join(", ") : "—";
   };
 
   const renderDuration = () => {
@@ -111,12 +212,46 @@ export function SpellDetails({ spellId }: SpellDetailsProps) {
     return `${count} ${unit}`;
   };
 
-  const renderSavingThrows = () => {
+  const savingThrowsLabel = React.useMemo(() => {
     if (!spell.saving_throws || spell.saving_throws.length === 0) {
       return "—";
     }
-    return spell.saving_throws.join(", ");
-  };
+
+    return spell.saving_throws
+      .map((save) => modifiersMap.get(save) ?? save)
+      .join(", ");
+  }, [modifiersMap, spell.saving_throws]);
+
+  const damageTypeLabel = React.useMemo(() => {
+    const damageTypeName = spell.damage_type?.name;
+    if (!damageTypeName) {
+      return null;
+    }
+
+    return damageTypesMap.get(damageTypeName) ?? damageTypeName;
+  }, [damageTypesMap, spell.damage_type?.name]);
+
+  const classNames = React.useMemo(
+    () =>
+      (spell.class_ids ?? []).map(
+        (classId) => classNameMap.get(classId) ?? "Название класса недоступно",
+      ),
+    [classNameMap, spell.class_ids],
+  );
+
+  const subclassNames = React.useMemo(
+    () =>
+      (spell.subclass_ids ?? []).map(
+        (subclassId) =>
+          subclassNameMap.get(subclassId) ?? "Название подкласса недоступно",
+      ),
+    [spell.subclass_ids, subclassNameMap],
+  );
+
+  const isLoadingSubclasses = subclassQueries.some(
+    (query) => query.isLoading || query.isFetching,
+  );
+  const hasSubclassError = subclassQueries.some((query) => query.isError);
 
   return (
     <ScreenContainer>
@@ -215,17 +350,15 @@ export function SpellDetails({ spellId }: SpellDetailsProps) {
           <BodyText>{renderComponents()}</BodyText>
         </View>
 
-        {/* Сейвы */}
         <View style={styles.block}>
           <BodyText style={styles.blockTitle}>Сейвы</BodyText>
-          <BodyText>{renderSavingThrows()}</BodyText>
+          <BodyText>{savingThrowsLabel}</BodyText>
         </View>
 
-        {/* Тип урона */}
-        {spell.damage_type?.name ? (
+        {damageTypeLabel ? (
           <View style={styles.block}>
             <BodyText style={styles.blockTitle}>Тип урона</BodyText>
-            <BodyText>{spell.damage_type.name}</BodyText>
+            <BodyText>{damageTypeLabel}</BodyText>
           </View>
         ) : null}
 
@@ -243,15 +376,42 @@ export function SpellDetails({ spellId }: SpellDetailsProps) {
           </View>
         ) : null}
 
-        {/* Привязка к классам/подклассам */}
         <View style={styles.block}>
           <BodyText style={styles.blockTitle}>Классы</BodyText>
-          <BodyText>
-            Привязано к {spell.class_ids.length} классам
-          </BodyText>
-          <BodyText>
-            Привязано к {spell.subclass_ids.length} подклассам
-          </BodyText>
+          {spell.class_ids.length === 0 ? (
+            <BodyText style={styles.helperText}>Классы не указаны</BodyText>
+          ) : (
+            <View style={styles.chipsContainer}>
+              {spell.class_ids.map((classId, index) => (
+                <View key={classId} style={styles.chip}>
+                  <BodyText style={styles.chipText}>{classNames[index]}</BodyText>
+                </View>
+              ))}
+            </View>
+          )}
+
+          <BodyText style={styles.blockTitle}>Подклассы</BodyText>
+          {isLoadingSubclasses ? (
+            <BodyText style={styles.helperText}>Загружаю подклассы…</BodyText>
+          ) : null}
+
+          {hasSubclassError ? (
+            <BodyText style={[styles.helperText, styles.errorText]}>
+              Не удалось загрузить некоторые подклассы
+            </BodyText>
+          ) : null}
+
+          {spell.subclass_ids.length === 0 ? (
+            <BodyText style={styles.helperText}>Подклассы не указаны</BodyText>
+          ) : (
+            <View style={styles.chipsContainer}>
+              {spell.subclass_ids.map((subclassId, index) => (
+                <View key={subclassId} style={styles.chip}>
+                  <BodyText style={styles.chipText}>{subclassNames[index]}</BodyText>
+                </View>
+              ))}
+            </View>
+          )}
         </View>
       </ScrollView>
     </ScreenContainer>
@@ -364,5 +524,21 @@ const styles = StyleSheet.create({
   labelText: {
     fontWeight: "600",
     color: colors.textSecondary,
+  },
+  chipsContainer: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  chip: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: colors.backgroundSecondary,
+    borderWidth: 1,
+    borderColor: colors.borderMuted,
+  },
+  chipText: {
+    color: colors.textPrimary,
   },
 });

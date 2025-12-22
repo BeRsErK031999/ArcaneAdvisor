@@ -8,24 +8,53 @@ import {
   Pressable,
   RefreshControl,
   StyleSheet,
+  TextInput,
   View,
 } from "react-native";
 
 import { getSpells } from "@/features/spells/api/getSpells";
+import { useSpellSchools } from "@/features/spells/api/useSpellSchools";
 import type { Spell } from "@/features/spells/api/types";
+import { getSources } from "@/features/sources/api/getSources";
+import type { Source } from "@/features/sources/api/types";
 import { colors } from "@/shared/theme/colors";
+import { MultiSelectField } from "@/shared/forms/MultiSelectField";
 import { ScreenContainer } from "@/shared/ui/ScreenContainer";
 import { BodyText, TitleText } from "@/shared/ui/Typography";
 
 export function SpellsList() {
   const router = useRouter();
+  const [searchTerm, setSearchTerm] = React.useState("");
+  const [selectedSchoolIds, setSelectedSchoolIds] = React.useState<string[]>([]);
+  const [selectedSourceIds, setSelectedSourceIds] = React.useState<string[]>([]);
+
+  const { schools, isLoading: isLoadingSchools } = useSpellSchools();
+
+  const sourcesQuery = useQuery<Source[], Error>({
+    queryKey: ["sources"],
+    queryFn: getSources,
+  });
+
+  const filters = React.useMemo(
+    () => ({
+      search: searchTerm.trim(),
+      schools: [...selectedSchoolIds].sort(),
+      sources: [...selectedSourceIds].sort(),
+    }),
+    [searchTerm, selectedSchoolIds, selectedSourceIds],
+  );
 
   const { data, isLoading, isError, error, refetch, isRefetching } = useQuery<
     Spell[],
     Error
   >({
-    queryKey: ["spells"],
-    queryFn: getSpells,
+    queryKey: ["spells", filters],
+    queryFn: () =>
+      getSpells({
+        search_by_name: filters.search || undefined,
+        filter_by_schools: filters.schools.length > 0 ? filters.schools : undefined,
+        filter_by_source_ids: filters.sources.length > 0 ? filters.sources : undefined,
+      }),
   });
 
   const spells = data ?? [];
@@ -51,6 +80,40 @@ export function SpellsList() {
         >
           <BodyText style={styles.createButtonText}>+ Создать</BodyText>
         </Pressable>
+      </View>
+
+      <View style={styles.filtersCard}>
+        <TextInput
+          value={searchTerm}
+          onChangeText={setSearchTerm}
+          placeholder="Поиск по названию"
+          placeholderTextColor={colors.inputPlaceholder}
+          style={styles.searchInput}
+        />
+
+        <MultiSelectField
+          label="Школы"
+          placeholder="Выберите школы"
+          values={selectedSchoolIds}
+          onChange={setSelectedSchoolIds}
+          options={schools.map((school) => ({
+            value: school.id,
+            label: school.label,
+          }))}
+          isLoading={isLoadingSchools}
+        />
+
+        <MultiSelectField
+          label="Источники"
+          placeholder="Выберите источники"
+          values={selectedSourceIds}
+          onChange={setSelectedSourceIds}
+          options={(sourcesQuery.data ?? []).map((source) => ({
+            value: source.source_id,
+            label: source.name,
+          }))}
+          isLoading={sourcesQuery.isLoading}
+        />
       </View>
 
       {isLoading && (
@@ -156,6 +219,27 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     marginBottom: 16,
+  },
+
+  filtersCard: {
+    gap: 12,
+    marginBottom: 16,
+    backgroundColor: colors.surface,
+    borderRadius: 8,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: colors.borderMuted,
+  },
+
+  searchInput: {
+    borderWidth: 1,
+    borderColor: colors.inputBorder,
+    backgroundColor: colors.inputBackground,
+    color: colors.textPrimary,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 6,
+    fontSize: 14,
   },
 
   centered: {
