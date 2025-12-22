@@ -1,5 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueries, useQueryClient, type UseQueryResult } from "@tanstack/react-query";
 import { isAxiosError } from "axios";
 import React from "react";
 import { Controller, useForm } from "react-hook-form";
@@ -15,6 +15,7 @@ import { useSpellSchools } from "@/features/spells/api/useSpellSchools";
 import { updateSpell } from "@/features/spells/api/updateSpell";
 import type { Class } from "@/features/classes/api/types";
 import type { Subclass } from "@/features/subclasses/api/types";
+import { getSubclasses } from "@/features/subclasses/api/getSubclasses";
 import type { MaterialComponent } from "@/features/material-components/api/types";
 import type { Modifiers, DamageTypesResponse } from "@/features/dictionaries/api/types";
 import type { Source } from "@/features/sources/api/types";
@@ -36,7 +37,6 @@ interface SpellFormProps {
   submitLabel?: string;
   sources?: Source[];
   classes?: Class[];
-  subclasses?: Subclass[];
   materialComponents?: MaterialComponent[];
   modifiers?: Modifiers;
   damageTypes?: DamageTypesResponse;
@@ -78,7 +78,6 @@ export const SpellForm: React.FC<SpellFormProps> = ({
   submitLabel,
   sources,
   classes,
-  subclasses,
   materialComponents,
   modifiers,
   damageTypes,
@@ -128,6 +127,45 @@ export const SpellForm: React.FC<SpellFormProps> = ({
   const isMaterialEnabled = watch("components.material");
   const damageTypeName = watch("damage_type.name");
 
+  const subclassQueries = useQueries<UseQueryResult<Subclass[], Error>[]>({
+    queries: selectedClassIds.map((classId) => ({
+      queryKey: ["subclasses", classId],
+      queryFn: () => getSubclasses({ filter_by_class_id: classId }),
+      enabled: Boolean(classId),
+    })),
+  });
+
+  const isLoadingSubclasses =
+    selectedClassIds.length > 0 &&
+    (subclassQueries.length === 0 ||
+      subclassQueries.some((query) => query.isLoading || query.isFetching));
+  const hasSubclassError = subclassQueries.some((query) => query.isError);
+
+  const subclassOptions: SelectOption[] = React.useMemo(() => {
+    if (selectedClassIds.length === 0) {
+      return [];
+    }
+
+    const optionsMap = new Map<string, SelectOption>();
+
+    subclassQueries.forEach((query) => {
+      query.data?.forEach((subclass) => {
+        if (!optionsMap.has(subclass.subclass_id)) {
+          optionsMap.set(subclass.subclass_id, {
+            value: subclass.subclass_id,
+            label: subclass.name,
+          });
+        }
+      });
+    });
+
+    return Array.from(optionsMap.values());
+  }, [selectedClassIds, subclassQueries]);
+
+  const refetchSubclasses = () => {
+    subclassQueries.forEach((query) => query.refetch());
+  };
+
   React.useEffect(() => {
     if (initialValues) {
       reset(initialValues);
@@ -158,17 +196,6 @@ export const SpellForm: React.FC<SpellFormProps> = ({
       })),
     [classes],
   );
-
-  const subclassOptions: SelectOption[] = React.useMemo(() => {
-    if (!subclasses || selectedClassIds.length === 0) {
-      return [];
-    }
-
-    const allowedClassIds = new Set(selectedClassIds);
-    return subclasses
-      .filter((subclass) => allowedClassIds.has(subclass.class_id))
-      .map((subclass) => ({ value: subclass.subclass_id, label: subclass.name }));
-  }, [subclasses, selectedClassIds]);
 
   React.useEffect(() => {
     const allowedSubclassIds = new Set(subclassOptions.map((option) => option.value));
@@ -961,7 +988,9 @@ export const SpellForm: React.FC<SpellFormProps> = ({
                   values={value}
                   onChange={onChange}
                   options={subclassOptions}
-                  disabled={selectedClassIds.length === 0 || subclassOptions.length === 0}
+                  disabled={
+                    selectedClassIds.length === 0 || isLoadingSubclasses || subclassOptions.length === 0
+                  }
                   errorMessage={errors.subclass_ids?.message}
                 />
               )}
@@ -969,6 +998,27 @@ export const SpellForm: React.FC<SpellFormProps> = ({
             {selectedClassIds.length === 0 ? (
               <BodyText style={styles.helperText}>
                 Подклассы будут доступны после выбора классов.
+              </BodyText>
+            ) : null}
+            {isLoadingSubclasses ? (
+              <BodyText style={styles.helperText}>Загружаю подклассы…</BodyText>
+            ) : null}
+            {hasSubclassError ? (
+              <View style={styles.inlineHelperRow}>
+                <BodyText style={styles.warningText}>
+                  Не удалось загрузить некоторые подклассы.
+                </BodyText>
+                <Pressable onPress={refetchSubclasses}>
+                  <BodyText style={styles.linkText}>Повторить</BodyText>
+                </Pressable>
+              </View>
+            ) : null}
+            {selectedClassIds.length > 0 &&
+            !isLoadingSubclasses &&
+            !hasSubclassError &&
+            subclassOptions.length === 0 ? (
+              <BodyText style={styles.helperText}>
+                Подклассы не найдены для выбранных классов.
               </BodyText>
             ) : null}
           </View>
@@ -1185,6 +1235,11 @@ const styles = StyleSheet.create({
   helperText: {
     fontSize: 13,
     color: colors.textMuted,
+  },
+  warningText: {
+    fontSize: 13,
+    color: colors.error,
+    fontWeight: "500",
   },
   linkText: {
     color: colors.accent,

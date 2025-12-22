@@ -1,10 +1,12 @@
 import React from 'react';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useQuery } from '@tanstack/react-query';
+import { useQueries, useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { getSubclasses } from '@/features/subclasses/api/getSubclasses';
 import type { Subclass } from '@/features/subclasses/api/types';
+import { getClasses } from '@/features/classes/api/getClasses';
+import type { Class } from '@/features/classes/api/types';
 import { colors } from '@/shared/theme/colors';
 import { BackButton } from '@/shared/ui/BackButton';
 import { ScreenContainer } from '@/shared/ui/ScreenContainer';
@@ -12,10 +14,50 @@ import { BodyText, TitleText } from '@/shared/ui/Typography';
 
 export function SubclassesList() {
   const router = useRouter();
-  const { data, isLoading, isError, error, refetch } = useQuery({
-    queryKey: ['subclasses'],
-    queryFn: getSubclasses,
+  const classesQuery = useQuery<Class[], Error>({
+    queryKey: ['classes'],
+    queryFn: getClasses,
   });
+
+  const classIds = classesQuery.data?.map((classItem) => classItem.class_id) ?? [];
+
+  const subclassQueries = useQueries<UseQueryResult<Subclass[], Error>[]>({
+    queries: classIds.map((classId) => ({
+      queryKey: ['subclasses', classId],
+      queryFn: () => getSubclasses({ filter_by_class_id: classId }),
+      enabled: Boolean(classId),
+    })),
+  });
+
+  const subclasses: Subclass[] = React.useMemo(() => {
+    const collected = new Map<string, Subclass>();
+    subclassQueries.forEach((query) => {
+      query.data?.forEach((subclass) => {
+        if (!collected.has(subclass.subclass_id)) {
+          collected.set(subclass.subclass_id, subclass);
+        }
+      });
+    });
+
+    return Array.from(collected.values());
+  }, [subclassQueries]);
+
+  const isLoadingSubclasses =
+    classIds.length > 0 &&
+    (subclassQueries.length === 0 ||
+      subclassQueries.some((query) => query.isLoading || query.isFetching));
+
+  const hasSubclassError = subclassQueries.some((query) => query.isError);
+
+  const combinedError =
+    classesQuery.error ??
+    subclassQueries.find((query) => query.error)?.error ??
+    null;
+
+  const refetchAll = () => {
+    classesQuery.refetch();
+    subclassQueries.forEach((query) => query.refetch());
+  };
 
   const handleCreate = () => router.push('/(tabs)/library/subclasses/create');
 
@@ -38,7 +80,7 @@ export function SubclassesList() {
     </Pressable>
   );
 
-  if (isLoading) {
+  if (classesQuery.isLoading || isLoadingSubclasses) {
     return (
       <ScreenContainer style={styles.centered}>
         <ActivityIndicator color={colors.accent} />
@@ -47,19 +89,32 @@ export function SubclassesList() {
     );
   }
 
-  if (isError) {
-    console.error('Error loading subclasses:', error);
+  if (classesQuery.isError || hasSubclassError) {
+    console.error('Error loading subclasses:', combinedError);
     return (
       <ScreenContainer style={styles.centered}>
         <BodyText style={styles.errorText}>Ошибка при загрузке подклассов.</BodyText>
-        <Pressable onPress={() => refetch()}>
+        <Pressable onPress={refetchAll}>
           <BodyText style={styles.linkText}>Повторить запрос</BodyText>
         </Pressable>
       </ScreenContainer>
     );
   }
 
-  if (!data || data.length === 0) {
+  if (!classesQuery.data || classesQuery.data.length === 0) {
+    return (
+      <ScreenContainer style={styles.centered}>
+        <BodyText style={styles.helperText}>
+          Нет классов для отображения подклассов. Создайте класс, чтобы увидеть его подклассы.
+        </BodyText>
+        <Pressable onPress={refetchAll}>
+          <BodyText style={styles.linkText}>Обновить список</BodyText>
+        </Pressable>
+      </ScreenContainer>
+    );
+  }
+
+  if (subclasses.length === 0) {
     return (
       <ScreenContainer style={styles.centered}>
         <View style={styles.headerRow}>
@@ -85,7 +140,7 @@ export function SubclassesList() {
       </View>
 
       <FlatList
-        data={data}
+        data={subclasses}
         keyExtractor={(item) => item.subclass_id}
         renderItem={renderItem}
         ItemSeparatorComponent={() => <View style={styles.separator} />}
