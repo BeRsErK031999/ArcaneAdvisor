@@ -3,7 +3,7 @@ import { useMutation, useQueries, useQueryClient, type UseQueryResult } from "@t
 import { isAxiosError } from "axios";
 import React from "react";
 import { Controller, useForm } from "react-hook-form";
-import { Link } from "expo-router";
+import { useRouter } from "expo-router";
 import { Pressable, StyleSheet, Switch, Text, TextInput, View } from "react-native";
 
 import { createSpell } from "@/features/spells/api/createSpell";
@@ -88,6 +88,7 @@ export const SpellForm: React.FC<SpellFormProps> = ({
     console.warn("SpellForm: spellId is required in edit mode");
   }
 
+  const router = useRouter();
   const queryClient = useQueryClient();
   const formDefaultValues = React.useMemo(() => initialValues ?? defaultValues, [initialValues]);
 
@@ -269,7 +270,6 @@ export const SpellForm: React.FC<SpellFormProps> = ({
   ) => {
     const trimmed = text.trim();
     if (trimmed === "") {
-      onChange(undefined);
       return;
     }
 
@@ -928,11 +928,13 @@ export const SpellForm: React.FC<SpellFormProps> = ({
                   <BodyText style={styles.helperText}>
                     Нет доступных материальных компонентов.
                   </BodyText>
-                  <Link href="/(tabs)/library/equipment/material-components/create" asChild>
-                    <Pressable>
-                      <BodyText style={styles.linkText}>Создать</BodyText>
-                    </Pressable>
-                  </Link>
+                  <Pressable
+                    onPress={() =>
+                      router.push("/(tabs)/library/equipment/material-components/create")
+                    }
+                  >
+                    <BodyText style={styles.linkText}>Создать</BodyText>
+                  </Pressable>
                 </View>
               ) : null}
             </View>
@@ -964,11 +966,9 @@ export const SpellForm: React.FC<SpellFormProps> = ({
                 <BodyText style={styles.helperText}>
                   Классы не найдены.
                 </BodyText>
-                <Link href="/(tabs)/library/classes/create" asChild>
-                  <Pressable>
-                    <BodyText style={styles.linkText}>Создать класс</BodyText>
-                  </Pressable>
-                </Link>
+                <Pressable onPress={() => router.push("/(tabs)/library/classes/create")}>
+                  <BodyText style={styles.linkText}>Создать класс</BodyText>
+                </Pressable>
               </View>
             ) : (
               <BodyText style={styles.helperText}>
