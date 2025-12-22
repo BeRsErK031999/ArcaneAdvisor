@@ -1,12 +1,23 @@
+// src/features/spells/components/NoClassesForSpells.tsx
+import { useRouter } from "expo-router";
 import React from "react";
 import { Pressable, StyleSheet, View } from "react-native";
-import { Link } from "expo-router";
 
 import { colors } from "@/shared/theme/colors";
 import { ScreenContainer } from "@/shared/ui/ScreenContainer";
 import { BodyText, TitleText } from "@/shared/ui/Typography";
 
 export function NoClassesForSpells() {
+  const router = useRouter();
+
+  const handleCreateClass = () => {
+    router.push("/(tabs)/library/classes/create");
+  };
+
+  const handleOpenClasses = () => {
+    router.push("/(tabs)/library/classes");
+  };
+
   return (
     <ScreenContainer>
       <View style={styles.centered}>
@@ -23,17 +34,26 @@ export function NoClassesForSpells() {
         </BodyText>
 
         <View style={styles.actions}>
-          <Link href="/(tabs)/library/classes/create" asChild>
-            <Pressable style={[styles.button, styles.primaryButton]}>
-              <BodyText style={styles.primaryButtonText}>Создать класс</BodyText>
-            </Pressable>
-          </Link>
+          <Pressable
+            style={({ pressed }) => [
+              styles.button,
+              styles.primaryButton,
+              pressed && styles.buttonPressed,
+            ]}
+            onPress={handleCreateClass}
+          >
+            <BodyText style={styles.primaryButtonText}>Создать класс</BodyText>
+          </Pressable>
 
-          <Link href="/(tabs)/library/classes" asChild>
-            <Pressable style={styles.button}>
-              <BodyText style={styles.buttonText}>Открыть классы</BodyText>
-            </Pressable>
-          </Link>
+          <Pressable
+            style={({ pressed }) => [
+              styles.button,
+              pressed && styles.buttonPressed,
+            ]}
+            onPress={handleOpenClasses}
+          >
+            <BodyText style={styles.buttonText}>Открыть классы</BodyText>
+          </Pressable>
         </View>
       </View>
     </ScreenContainer>
@@ -61,7 +81,8 @@ const styles = StyleSheet.create({
   },
   actions: {
     flexDirection: "row",
-    gap: 12,
+    columnGap: 12,
+    rowGap: 12,
     flexWrap: "wrap",
     justifyContent: "center",
   },
@@ -73,6 +94,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.borderMuted,
+  },
+  buttonPressed: {
+    opacity: 0.85,
   },
   buttonText: {
     color: colors.textPrimary,
