@@ -5,5 +5,17 @@ import { FeatForm } from '@/features/feats/components/FeatForm';
 
 export default function FeatCreateScreen() {
   const router = useRouter();
-  return <FeatForm onSuccess={() => router.replace('/(tabs)/library/feats')} />;
+  return (
+    <FeatForm
+      mode="create"
+      showBackButton
+      onBackPress={() => router.back()}
+      onSuccess={(createdId) =>
+        router.replace({
+          pathname: '/(tabs)/library/feats/[featId]',
+          params: { featId: createdId },
+        })
+      }
+    />
+  );
 }
