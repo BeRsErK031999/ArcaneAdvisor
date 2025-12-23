@@ -72,9 +72,12 @@ export default function FeatEditScreen() {
       mode="edit"
       featId={featId}
       initialValues={initialValues}
-      onSuccess={() =>
+      showBackButton
+      onBackPress={() => router.back()}
+      onSuccess={(updatedId) =>
         router.replace({
-          pathname: '/(tabs)/library/feats',
+          pathname: '/(tabs)/library/feats/[featId]',
+          params: { featId: updatedId },
         })
       }
       submitLabel="Сохранить изменения"

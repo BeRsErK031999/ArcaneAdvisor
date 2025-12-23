@@ -1,16 +1,23 @@
 import React from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { StyleSheet, Switch, Text, TextInput, View } from 'react-native';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { Alert, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { isAxiosError } from 'axios';
+import { useRouter } from 'expo-router';
+import { z } from 'zod';
 
 import { createFeat } from '@/features/feats/api/createFeat';
 import { updateFeat } from '@/features/feats/api/updateFeat';
-import { FeatCreateSchema, type FeatCreateInput } from '@/features/feats/api/types';
+import type { FeatCreateInput } from '@/features/feats/api/types';
+import { MultiSelectField } from '@/shared/forms/MultiSelectField';
 import { FormErrorText } from '@/shared/forms/FormErrorText';
 import { FormScreenLayout } from '@/shared/forms/FormScreenLayout';
 import { FormSubmitButton } from '@/shared/forms/FormSubmitButton';
 import { colors } from '@/shared/theme/colors';
+import type { SelectOption } from '@/shared/forms/SelectField';
+import { getModifiers } from '@/features/dictionaries/api/getModifiers';
+import type { Modifiers } from '@/features/dictionaries/api/types';
 
 type FeatFormMode = 'create' | 'edit';
 
@@ -18,18 +25,71 @@ interface FeatFormProps {
   mode?: FeatFormMode;
   featId?: string;
   initialValues?: FeatCreateInput;
-  onSuccess?: () => void;
+  onSuccess?: (featId: string) => void;
   submitLabel?: string;
+  showBackButton?: boolean;
+  onBackPress?: () => void;
 }
 
-const defaultValues: FeatCreateInput = {
-  name: '',
-  description: '',
-  caster: false,
-  required_armor_types: [],
-  required_modifiers: [],
-  increase_modifiers: [],
-};
+const ArmorTypeOptions: SelectOption[] = [
+  { label: 'Лёгкие доспехи', value: 'light' },
+  { label: 'Средние доспехи', value: 'medium' },
+  { label: 'Тяжёлые доспехи', value: 'heavy' },
+  { label: 'Щит', value: 'shield' },
+];
+
+const FeatFormSchema = z
+  .object({
+    name: z.string().trim().min(1, 'Название способности обязательно'),
+    description: z.string().trim().min(1, 'Описание обязательно'),
+    caster: z.boolean(),
+    required_armor_types: z.array(z.string()).default([]),
+    required_modifier_keys: z.array(z.string()).default([]),
+    required_min_value: z.string().optional(),
+    increase_modifiers: z.array(z.string()).default([]),
+  })
+  .superRefine((data, ctx) => {
+    if (data.required_modifier_keys.length === 0) {
+      return;
+    }
+
+    const trimmed = data.required_min_value?.trim() ?? '';
+    if (!trimmed) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Укажите минимальное значение характеристики',
+        path: ['required_min_value'],
+      });
+      return;
+    }
+
+    const parsed = Number(trimmed);
+    if (!Number.isFinite(parsed)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Введите корректное числовое значение',
+        path: ['required_min_value'],
+      });
+    } else if (parsed < 1) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Минимальное значение должно быть ≥ 1',
+        path: ['required_min_value'],
+      });
+    }
+  });
+
+type FeatFormValues = z.infer<typeof FeatFormSchema>;
+
+const mapInitialValues = (values?: FeatCreateInput): FeatFormValues => ({
+  name: values?.name ?? '',
+  description: values?.description ?? '',
+  caster: values?.caster ?? false,
+  required_armor_types: values?.required_armor_types ?? [],
+  required_modifier_keys: values?.required_modifiers.map((item) => item.modifier) ?? [],
+  required_min_value: values?.required_modifiers[0]?.min_value?.toString() ?? '',
+  increase_modifiers: values?.increase_modifiers ?? [],
+});
 
 export const FeatForm: React.FC<FeatFormProps> = ({
   mode = 'create',
@@ -37,54 +97,57 @@ export const FeatForm: React.FC<FeatFormProps> = ({
   initialValues,
   onSuccess,
   submitLabel,
+  showBackButton = false,
+  onBackPress,
 }) => {
+  const router = useRouter();
   const queryClient = useQueryClient();
 
-  const formDefaultValues = initialValues ?? defaultValues;
+  const formDefaultValues = mapInitialValues(initialValues);
 
   const {
     control,
     handleSubmit,
     reset,
-    formState: { errors },
-  } = useForm<FeatCreateInput>({
-    resolver: zodResolver(FeatCreateSchema),
+    setError,
+    clearErrors,
+    watch,
+    formState: { errors, isDirty },
+  } = useForm<FeatFormValues>({
+    resolver: zodResolver(FeatFormSchema),
     defaultValues: formDefaultValues,
+    mode: 'onBlur',
+    reValidateMode: 'onChange',
   });
 
   React.useEffect(() => {
     if (initialValues) {
-      reset(initialValues);
+      reset(mapInitialValues(initialValues));
     }
   }, [initialValues, reset]);
 
   const [submitError, setSubmitError] = React.useState<string | null>(null);
-  const [rawRequiredArmors, setRawRequiredArmors] = React.useState(
-    initialValues?.required_armor_types.join(', ') ?? '',
-  );
-  const [requiredModifiersNames, setRequiredModifiersNames] = React.useState(
-    initialValues?.required_modifiers.map((modifier) => modifier.modifier).join(', ') ?? '',
-  );
-  const [requiredMinValue, setRequiredMinValue] = React.useState(
-    initialValues?.required_modifiers[0]?.min_value?.toString() ?? '',
-  );
-  const [increaseModifiers, setIncreaseModifiers] = React.useState(
-    initialValues?.increase_modifiers.join(', ') ?? '',
-  );
 
-  React.useEffect(() => {
-    if (initialValues) {
-      setRawRequiredArmors(initialValues.required_armor_types.join(', '));
-      setRequiredModifiersNames(initialValues.required_modifiers.map((m) => m.modifier).join(', '));
-      setRequiredMinValue(initialValues.required_modifiers[0]?.min_value?.toString() ?? '');
-      setIncreaseModifiers(initialValues.increase_modifiers.join(', '));
-    }
-  }, [initialValues]);
+  const modifiersQuery = useQuery<Modifiers>({
+    queryKey: ['modifiers'],
+    queryFn: getModifiers,
+  });
+
+  const modifierOptions: SelectOption[] = React.useMemo(() => {
+    if (!modifiersQuery.data) return [];
+    return Object.entries(modifiersQuery.data).map(([value, label]) => ({
+      value,
+      label,
+    }));
+  }, [modifiersQuery.data]);
 
   const createMutation = useMutation({
     mutationFn: createFeat,
-    onSuccess: () => {
+    onSuccess: (feat) => {
       queryClient.invalidateQueries({ queryKey: ['feats'] });
+      if (feat.feat_id) {
+        queryClient.setQueryData(['feats', feat.feat_id], feat);
+      }
     },
   });
 
@@ -95,62 +158,126 @@ export const FeatForm: React.FC<FeatFormProps> = ({
       }
       return updateFeat(featId, values);
     },
-    onSuccess: () => {
+    onSuccess: (updatedFeat) => {
       queryClient.invalidateQueries({ queryKey: ['feats'] });
-      if (featId) {
-        queryClient.invalidateQueries({ queryKey: ['feats', featId] });
+      if (updatedFeat.feat_id) {
+        queryClient.setQueryData(['feats', updatedFeat.feat_id], updatedFeat);
+        queryClient.invalidateQueries({ queryKey: ['feats', updatedFeat.feat_id] });
       }
     },
   });
 
   const isSubmitting = createMutation.isPending || updateMutation.isPending;
 
-  const onSubmit = async (values: FeatCreateInput) => {
+  const requiredModifierKeys = watch('required_modifier_keys');
+
+  const parseMinValue = (value?: string) => {
+    const trimmed = value?.trim() ?? '';
+    const parsed = Number(trimmed);
+    if (!Number.isFinite(parsed) || parsed < 1) {
+      return null;
+    }
+    return parsed;
+  };
+
+  const extractSubmitError = (error: unknown, currentMode: FeatFormMode) => {
+    if (isAxiosError(error)) {
+      const data = error.response?.data as { extra?: { message?: string }[] } | undefined;
+      const extraMessage = data?.extra?.find((item) => item.message)?.message;
+      if (extraMessage) {
+        return extraMessage.toString();
+      }
+    }
+
+    return currentMode === 'edit'
+      ? 'Не удалось сохранить изменения способности. Попробуйте ещё раз.'
+      : 'Не удалось сохранить способность. Попробуйте ещё раз.';
+  };
+
+  const handleBack = () => {
+    if (isDirty) {
+      Alert.alert(
+        'Есть несохранённые изменения',
+        'Есть несохранённые изменения. Выйти без сохранения?',
+        [
+          { text: 'Отмена', style: 'cancel' },
+          {
+            text: 'Выйти',
+            style: 'destructive',
+            onPress: () => {
+              if (onBackPress) {
+                onBackPress();
+              } else {
+                router.back();
+              }
+            },
+          },
+        ],
+      );
+      return;
+    }
+
+    if (onBackPress) {
+      onBackPress();
+    } else {
+      router.back();
+    }
+  };
+
+  const onSubmit = async (values: FeatFormValues) => {
     setSubmitError(null);
-
-    const armorTypes = (rawRequiredArmors ?? '')
-      .split(',')
-      .map((s) => s.trim())
-      .filter(Boolean);
-
-    const modifiers = (requiredModifiersNames ?? '')
-      .split(',')
-      .map((m) => m.trim())
-      .filter(Boolean)
-      .map((m) => ({ modifier: m, min_value: Number(requiredMinValue) || 0 }));
-
-    const increased = (increaseModifiers ?? '')
-      .split(',')
-      .map((m) => m.trim())
-      .filter(Boolean);
+    clearErrors('required_min_value');
 
     const payload: FeatCreateInput = {
-      ...values,
-      required_armor_types: armorTypes,
-      required_modifiers: modifiers,
-      increase_modifiers: increased,
+      name: values.name.trim(),
+      description: values.description.trim(),
+      caster: values.caster,
+      required_armor_types: values.required_armor_types,
+      required_modifiers: [],
+      increase_modifiers: values.increase_modifiers,
     };
+
+    if (requiredModifierKeys.length > 0) {
+      const parsedMinValue = parseMinValue(values.required_min_value);
+      if (parsedMinValue === null) {
+        setError('required_min_value', {
+          type: 'manual',
+          message: 'Укажите корректное минимальное значение характеристики',
+        });
+        return;
+      }
+
+      payload.required_modifiers = requiredModifierKeys.map((modifier) => ({
+        modifier,
+        min_value: parsedMinValue,
+      }));
+    }
 
     try {
       if (mode === 'edit') {
         await updateMutation.mutateAsync(payload);
+        if (onSuccess) {
+          onSuccess(featId ?? '');
+        } else if (featId) {
+          router.replace({
+            pathname: '/(tabs)/library/feats/[featId]',
+            params: { featId },
+          });
+        }
       } else {
-        await createMutation.mutateAsync(payload);
-        reset(defaultValues);
-        setRawRequiredArmors('');
-        setRequiredModifiersNames('');
-        setRequiredMinValue('');
-        setIncreaseModifiers('');
+        const createdFeat = await createMutation.mutateAsync(payload);
+        if (onSuccess) {
+          onSuccess(createdFeat.feat_id);
+        } else {
+          router.replace({
+            pathname: '/(tabs)/library/feats/[featId]',
+            params: { featId: createdFeat.feat_id },
+          });
+        }
       }
-
-      onSuccess?.();
     } catch (error) {
       console.error('Feat form submit error:', error);
-      setSubmitError(
-        mode === 'edit'
-          ? 'Не удалось сохранить изменения способности. Попробуйте ещё раз.'
-          : 'Не удалось сохранить способность. Попробуйте ещё раз.',
-      );
+      setSubmitError(extractSubmitError(error, mode));
     }
   };
 
@@ -158,13 +285,13 @@ export const FeatForm: React.FC<FeatFormProps> = ({
   const formTitle = mode === 'edit' ? 'Редактировать способность (feat)' : 'Создать способность (feat)';
 
   return (
-    <FormScreenLayout title={formTitle}>
+    <FormScreenLayout title={formTitle} showBackButton={showBackButton} onBackPress={handleBack}>
       {submitError ? (
         <Text style={{ color: colors.error, marginBottom: 8 }}>{submitError}</Text>
       ) : null}
 
       <View style={styles.field}>
-        <Text style={styles.label}>Название</Text>
+        <Text style={styles.label}>Название *</Text>
         <Controller
           control={control}
           name="name"
@@ -183,7 +310,7 @@ export const FeatForm: React.FC<FeatFormProps> = ({
       </View>
 
       <View style={styles.field}>
-        <Text style={styles.label}>Описание</Text>
+        <Text style={styles.label}>Описание *</Text>
         <Controller
           control={control}
           name="description"
@@ -215,53 +342,79 @@ export const FeatForm: React.FC<FeatFormProps> = ({
       </View>
 
       <View style={styles.field}>
-        <Text style={styles.label}>Требуемые типы брони (через запятую)</Text>
-        <TextInput
-          value={rawRequiredArmors}
-          onChangeText={setRawRequiredArmors}
-          placeholder="light, medium, heavy"
-          style={styles.input}
-          placeholderTextColor={colors.inputPlaceholder}
+        <Controller
+          control={control}
+          name="required_armor_types"
+          render={({ field: { value, onChange } }) => (
+            <MultiSelectField
+              label="Требуемые типы брони"
+              placeholder="Выберите типы брони"
+              values={value}
+              onChange={onChange}
+              options={ArmorTypeOptions}
+              errorMessage={errors.required_armor_types?.message}
+            />
+          )}
         />
-        <FormErrorText>{errors.required_armor_types?.message}</FormErrorText>
       </View>
 
       <View style={styles.field}>
-        <Text style={styles.label}>Требуемые характеристики (через запятую)</Text>
-        <TextInput
-          value={requiredModifiersNames}
-          onChangeText={setRequiredModifiersNames}
-          placeholder="STR, DEX"
-          style={styles.input}
-          placeholderTextColor={colors.inputPlaceholder}
+        <Controller
+          control={control}
+          name="required_modifier_keys"
+          render={({ field: { value, onChange } }) => (
+            <MultiSelectField
+              label="Требуемые характеристики"
+              placeholder="Выберите характеристики"
+              values={value}
+              onChange={onChange}
+              options={modifierOptions}
+              isLoading={modifiersQuery.isLoading}
+              errorMessage={errors.required_modifier_keys?.message}
+            />
+          )}
         />
-        <FormErrorText>{errors.required_modifiers?.message}</FormErrorText>
       </View>
 
       <View style={styles.field}>
         <Text style={styles.label}>Минимальное значение характеристики</Text>
-        <TextInput
-          value={requiredMinValue}
-          onChangeText={setRequiredMinValue}
-          keyboardType="numeric"
-          placeholder="13"
-          style={styles.input}
-          placeholderTextColor={colors.inputPlaceholder}
+        <Controller
+          control={control}
+          name="required_min_value"
+          render={({ field: { value, onChange, onBlur } }) => (
+            <TextInput
+              value={value}
+              onChangeText={onChange}
+              onBlur={onBlur}
+              keyboardType="numeric"
+              placeholder="13"
+              style={styles.input}
+              placeholderTextColor={colors.inputPlaceholder}
+            />
+          )}
         />
-        <FormErrorText>{errors.required_modifiers?.message}</FormErrorText>
-        {/* TODO: сделать полноценный редактор модификаторов */}
+        <FormErrorText>{errors.required_min_value?.message}</FormErrorText>
+        <Text style={styles.helperText}>
+          Если выбраны характеристики, укажите одно минимальное значение, которое применится ко всем.
+        </Text>
       </View>
 
       <View style={styles.field}>
-        <Text style={styles.label}>Увеличиваемые характеристики (через запятую)</Text>
-        <TextInput
-          value={increaseModifiers}
-          onChangeText={setIncreaseModifiers}
-          placeholder="STR, CHA"
-          style={styles.input}
-          placeholderTextColor={colors.inputPlaceholder}
+        <Controller
+          control={control}
+          name="increase_modifiers"
+          render={({ field: { value, onChange } }) => (
+            <MultiSelectField
+              label="Увеличиваемые характеристики"
+              placeholder="Выберите характеристики"
+              values={value}
+              onChange={onChange}
+              options={modifierOptions}
+              isLoading={modifiersQuery.isLoading}
+              errorMessage={errors.increase_modifiers?.message}
+            />
+          )}
         />
-        <FormErrorText>{errors.increase_modifiers?.message}</FormErrorText>
       </View>
 
       <FormSubmitButton title={finalLabel} isSubmitting={isSubmitting} onPress={handleSubmit(onSubmit)} />
@@ -298,5 +451,9 @@ const styles = StyleSheet.create({
   textArea: {
     minHeight: 100,
     textAlignVertical: 'top',
+  },
+  helperText: {
+    color: colors.textSecondary,
+    fontSize: 12,
   },
 });

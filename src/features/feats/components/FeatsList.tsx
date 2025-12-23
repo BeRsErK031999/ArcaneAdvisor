@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
-import { Link, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
 import React from 'react';
-import { ActivityIndicator, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { getFeats } from '@/features/feats/api/getFeats';
 import type { Feat } from '@/features/feats/api/types';
@@ -48,32 +48,33 @@ export function FeatsList() {
       .join(', ');
 
     return (
-      <Link
-        href={{ pathname: '/(tabs)/library/feats/[featId]/edit', params: { featId: item.feat_id } }}
-        asChild
+      <Pressable
+        style={styles.card}
+        onPress={() =>
+          router.push({
+            pathname: '/(tabs)/library/feats/[featId]',
+            params: { featId: item.feat_id },
+          })
+        }
       >
-        <TouchableOpacity style={styles.card}>
-          <Text style={styles.title}>
-            {item.name}
-            {item.caster ? ' (кастер)' : ''}
-          </Text>
-          <Text style={styles.meta}>Требуемые доспехи: {armorText}</Text>
-          <Text style={styles.meta}>
-            Требуемые статы: {requiredStats || 'нет'}
-          </Text>
-          <Text numberOfLines={3} style={styles.description}>
-            {item.description}
-          </Text>
-        </TouchableOpacity>
-      </Link>
+        <Text style={styles.title}>
+          {item.name}
+          {item.caster ? ' (кастер)' : ''}
+        </Text>
+        <Text style={styles.meta}>Требуемые доспехи: {armorText}</Text>
+        <Text style={styles.meta}>Требуемые статы: {requiredStats || 'нет'}</Text>
+        <Text numberOfLines={3} style={styles.description}>
+          {item.description}
+        </Text>
+      </Pressable>
     );
   };
 
   return (
     <ScreenContainer>
-      <TouchableOpacity onPress={() => router.push('/(tabs)/library/feats/create')} style={styles.createButton}>
+      <Pressable onPress={() => router.push('/(tabs)/library/feats/create')} style={styles.createButton}>
         <Text style={styles.createButtonText}>+ Создать способность (feat)</Text>
-      </TouchableOpacity>
+      </Pressable>
 
       {feats.length === 0 ? (
         <View style={styles.centered}>

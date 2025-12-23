@@ -1,6 +1,8 @@
 import { apiClient } from '@/shared/api/client';
-import type { FeatCreateInput } from './types';
+import { getFeatById } from './getFeatById';
+import type { Feat, FeatCreateInput } from './types';
 
-export async function updateFeat(featId: string, payload: FeatCreateInput): Promise<void> {
+export async function updateFeat(featId: string, payload: FeatCreateInput): Promise<Feat> {
   await apiClient.put(`/api/v1/feats/${featId}`, payload);
+  return getFeatById(featId);
 }
